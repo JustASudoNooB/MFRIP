@@ -21,7 +21,19 @@ NIFTY50 = 120716
 
 
 def needs_bootstrap(conn: sqlite3.Connection) -> bool:
-    return conn.execute("SELECT COUNT(*) FROM schemes").fetchone()[0] == 0
+    """True if the DB is missing the fund master OR the advised plans.
+
+    Checking recommendations (not just schemes) matters when a partially-built
+    database is deployed: it may already hold the scheme master yet have no
+    advised plans loaded, in which case the audit and research features would
+    show nothing until we load them.
+    """
+    try:
+        schemes = conn.execute("SELECT COUNT(*) FROM schemes").fetchone()[0]
+        recs = conn.execute("SELECT COUNT(*) FROM recommendations").fetchone()[0]
+    except sqlite3.OperationalError:
+        return True
+    return schemes == 0 or recs == 0
 
 
 def bootstrap(conn: sqlite3.Connection, recs_dir: str = "recommendations",

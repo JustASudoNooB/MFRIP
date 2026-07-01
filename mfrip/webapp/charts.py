@@ -38,6 +38,24 @@ def _base(fig, height=340, ytitle=""):
     return fig
 
 
+def calendar_year_chart(cy, height=300):
+    """Year-on-year (calendar-year) returns as coloured bars: green up, red down.
+    `cy` is the list of (year, return, is_partial) from calendar_year_returns."""
+    import plotly.graph_objects as go
+    years = [str(y) for (y, r, p) in cy]
+    vals = [r * 100 for (y, r, p) in cy]
+    colors = [GREEN if v >= 0 else RED for v in vals]
+    labels = [f"{v:+.1f}%" + ("*" if p else "") for (v, (y, r, p)) in zip(vals, cy)]
+    fig = go.Figure(go.Bar(
+        x=years, y=vals, marker_color=colors, text=labels, textposition="outside",
+        cliponaxis=False, hovertemplate="%{x}: %{y:+.1f}%<extra></extra>"))
+    _base(fig, height, ytitle="")
+    fig.update_layout(hovermode="x")
+    fig.update_yaxes(ticksuffix="%", zeroline=True, zerolinecolor=MUTED)
+    fig.update_xaxes(title="calendar year", type="category")
+    return fig
+
+
 def growth_chart(series: dict[str, pd.Series], height=340):
     """Lines. A single series is coloured by direction (green up / red down);
     multiple series get distinct colours (amber, cyan, …) with amber filled."""

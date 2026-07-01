@@ -78,3 +78,39 @@ def trailing_cagr(
     if years <= 1.0:
         return growth - 1.0
     return growth ** (1.0 / elapsed_years) - 1.0
+
+
+def calendar_year_returns(nav: pd.Series, as_of: pd.Timestamp | None = None):
+    """Year-on-year (calendar-year) returns for a NAV series.
+
+    Each year's return is that year's closing NAV over the prior year's closing
+    NAV (standard Dec-to-Dec). The first year in the data is measured from the
+    fund's inception NAV to that year's close, so it is partial if the fund
+    started after January; the final year is partial if the data ends before
+    December. Returns a list of (year, return, is_partial), oldest first.
+    """
+    nav = nav.dropna().sort_index()
+    if as_of is not None:
+        nav = cut(nav, as_of)
+    if len(nav) < 2:
+        return []
+    year_end = nav.resample("YE").last().dropna()
+    out: list[tuple[int, float, bool]] = []
+    prev = None
+    first_month = nav.index[0].month
+    for ts, val in year_end.items():
+        year = int(ts.year)
+        val = float(val)
+        if prev is None:
+            base = float(nav.iloc[0])          # inception
+            partial = first_month > 1
+        else:
+            base = prev
+            partial = False
+        if base > 0:
+            out.append((year, val / base - 1.0, partial))
+        prev = val
+    if out and nav.index[-1].month < 12:       # data ends mid-year
+        y, r, _ = out[-1]
+        out[-1] = (y, r, True)
+    return out
