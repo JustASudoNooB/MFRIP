@@ -1,0 +1,23 @@
+creator: Ankur Warikoo
+advisor: Chanchal Agarwal
+source_platform: YouTube (ET panel)
+rec_date: 2025-11-08
+risk_profile: Aggressive
+horizon: long-term
+total_amount: 1000000
+buckets:
+  - asset_class: equity
+    amount: 750000
+    funds:
+      - {name: "SBI Focused",        search: "SBI Focused Equity Direct Growth"}
+      - {name: "Nippon India Growth Midcap", search: "Nippon India Growth Direct Growth", note: "verify mid-cap fund"}
+      - {name: "Bandhan Small Cap",  search: "Bandhan Small Cap Direct Growth"}
+  - asset_class: debt
+    amount: 150000
+    funds:
+      - {name: "Direct bonds", included: false, note: "not a mutual fund - excluded"}
+      - {name: "Credit themed funds", included: false, note: "unspecified - excluded; can map to a credit-risk fund later"}
+  - asset_class: gold
+    amount: 100000
+    funds:
+      - {name: "Nippon Gold Savings", search: "Nippon India Gold Savings Direct Growth"}
