@@ -1,0 +1,10 @@
+# Runtime dependencies for MFRIP (Streamlit Cloud / local)
+streamlit>=1.40,<2
+pandas>=2.2
+numpy>=1.26
+plotly>=5.20
+requests>=2.31
+PyYAML>=6.0
+
+# dev/test only (not needed to run the app):
+#   pytest>=8.0
