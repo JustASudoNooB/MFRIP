@@ -40,6 +40,8 @@ from mfrip.metrics import montecarlo as MC
 from mfrip import validation as VALID
 from mfrip.store import saved as SAVED
 from mfrip.webapp import leaderboard as LB
+from mfrip.webapp import screener as SCR
+from mfrip.webapp import freshness as FRESH
 from mfrip.webapp import benchmarks as BM
 from mfrip.advisor.categorize import infer_sleeve
 
@@ -48,33 +50,100 @@ st.set_page_config(page_title="MFRIP · Fund Intelligence", page_icon="▲", lay
 WINDOWS = {"6 months": 0.5, "1 year": 1.0, "3 years": 3.0, "5 years": 5.0, "Max": None}
 
 # ----------------------------------------------------------------- styling
+# Editorial design-studio skin: warm paper, ink type, hand-drawn accents.
 st.markdown("""
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
   #MainMenu, footer, header {visibility:hidden;}
-  .block-container {padding-top:1.2rem; padding-bottom:2rem; max-width:1180px;}
-  html, body, [class*="css"] {font-family:'Inter','Segoe UI',sans-serif;}
-  /* amber top rule + header */
-  .mf-top {border-top:2px solid #ffa53c; margin:-1.2rem -100vw 0; padding-top:1rem;}
-  .mf-head {display:flex; align-items:baseline; gap:12px; border-bottom:1px solid #262a33;
-            padding-bottom:10px; margin-bottom:6px;}
-  .mf-tag {background:#ffa53c; color:#0a0c10; font-weight:700; font-size:11px;
-           letter-spacing:.16em; padding:3px 8px; border-radius:2px;}
-  .mf-title {color:#cdd3dc; font-size:19px; font-weight:600; letter-spacing:.02em;}
-  .mf-sub {color:#6a7079; font-size:12px; font-family:monospace;}
-  /* metrics → terminal tiles */
-  div[data-testid="stMetric"] {background:#13161d; border:1px solid #262a33;
-       border-radius:3px; padding:10px 12px;}
-  div[data-testid="stMetricLabel"] p {color:#6a7079; font-size:10px !important;
-       text-transform:uppercase; letter-spacing:.07em;}
-  div[data-testid="stMetricValue"] {color:#cdd3dc; font-family:'SF Mono',Consolas,monospace;
-       font-size:22px; font-variant-numeric:tabular-nums;}
-  /* tabs */
-  button[data-baseweb="tab"] {font-size:13px;}
-  button[data-baseweb="tab"][aria-selected="true"] {color:#ffa53c;}
-  div[data-baseweb="tab-highlight"] {background:#ffa53c;}
-  h2, h3 {color:#ffa53c !important; font-size:13px !important; text-transform:uppercase;
-          letter-spacing:.06em; font-weight:600;}
-  .stDataFrame {border:1px solid #262a33; border-radius:3px;}
+  .block-container {padding-top:1.0rem; padding-bottom:2.5rem; max-width:1180px;}
+  html, body, [class*="css"] {font-family:'Inter','Segoe UI',sans-serif; color:#17150F;}
+  h1,h2,h3,h4 {font-family:'Space Grotesk','Inter',sans-serif !important;
+               letter-spacing:-0.01em; color:#17150F !important;}
+  h2,h3 {font-size:16px !important; font-weight:650;}
+  /* masthead: bare wordmark on paper, thin ink rule ending in a wave */
+  .mf-head {display:flex; align-items:baseline; gap:14px; background:none;
+            padding:6px 0 12px 0; margin-bottom:14px; position:relative;
+            border-bottom:1.5px solid #17150F;}
+  .mf-head::after {content:""; position:absolute; right:0; bottom:-8px;
+      width:72px; height:14px; background-repeat:no-repeat;
+      background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='14' viewBox='0 0 72 14'%3E%3Cpath d='M2 8 Q8 2 14 8 T26 8 T38 8 T50 8 T62 8 T74 8' fill='none' stroke='%2317150F' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");}
+  .mf-tag {background:none; color:#17150F; font-family:'Space Grotesk',sans-serif;
+           font-weight:800; font-size:17px; letter-spacing:.14em; padding:0;}
+  .mf-title {color:#17150F; font-family:'Space Grotesk',sans-serif;
+             font-size:17px; font-weight:600;}
+  .mf-sub {color:#8D8677; font-size:12px;}
+  /* hero */
+  .mf-hero {position:relative; padding:34px 8px 30px 8px; overflow:visible;}
+  .mf-hero::before {content:""; position:absolute; top:-60px; left:-90px;
+      width:420px; height:340px; pointer-events:none; z-index:0;
+      background:radial-gradient(closest-side, rgba(245,184,160,.38), rgba(201,184,240,.30) 55%, rgba(242,239,232,0) 75%);
+      filter:blur(38px);}
+  .mf-hero h1 {position:relative; z-index:1; margin:0 0 12px 0;
+      font-family:'Space Grotesk',sans-serif; font-weight:700; color:#17150F;
+      font-size:clamp(34px,5vw,56px); line-height:1.08; letter-spacing:-0.015em;}
+  .mf-hero .squig {position:relative; white-space:nowrap;}
+  .mf-hero .squig::after {content:""; position:absolute; left:0; right:0; bottom:-7px; height:10px;
+      background-repeat:repeat-x;
+      background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='10' viewBox='0 0 40 10'%3E%3Cpath d='M0 6 Q5 1 10 6 T20 6 T30 6 T40 6' fill='none' stroke='%2317150F' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");}
+  .mf-hero p {position:relative; z-index:1; color:#8D8677; font-size:16px;
+      margin:0 0 20px 0; max-width:560px;}
+  .mf-pill {display:inline-block; background:#17150F; color:#F2EFE8 !important;
+      padding:11px 24px; border-radius:999px; font-weight:600; font-size:14px;
+      text-decoration:none !important; transition:transform .12s ease, box-shadow .12s ease;
+      box-shadow:0 2px 8px rgba(23,21,15,.18);}
+  .mf-pill:hover {transform:translateY(-2px); box-shadow:0 5px 14px rgba(23,21,15,.24);}
+  /* ink statement band */
+  .mf-band {position:relative; background:#17150F; color:#F2EFE8;
+      border-radius:16px; padding:30px 34px; margin:8px 0 18px 0; overflow:hidden;}
+  .mf-band p {position:relative; z-index:1; font-family:'Space Grotesk',sans-serif;
+      font-size:clamp(16px,2vw,21px); line-height:1.65; margin:0; color:#F2EFE8;}
+  .mf-band::before, .mf-band::after {content:""; position:absolute; width:220px; height:60px;
+      opacity:.14; background-repeat:repeat-x;
+      background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='16' viewBox='0 0 44 16'%3E%3Cpath d='M0 9 Q5.5 3 11 9 T22 9 T33 9 T44 9' fill='none' stroke='%23F2EFE8' stroke-width='2'/%3E%3C/svg%3E");}
+  .mf-band::before {top:14px; right:-30px; transform:rotate(-4deg);}
+  .mf-band::after {bottom:12px; left:-24px; transform:rotate(3deg);}
+  /* tabs: editorial uppercase, hand-drawn underline on active */
+  div[data-baseweb="tab-list"] {gap:20px; border-bottom:1px solid #E4DDD0 !important;}
+  button[data-baseweb="tab"] {font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+      color:#8D8677; background:transparent; border-radius:0;
+      padding:8px 2px 12px 2px !important; font-weight:600;}
+  button[data-baseweb="tab"]:hover {color:#17150F; background:transparent;}
+  button[data-baseweb="tab"][aria-selected="true"] {color:#17150F; background:transparent;
+      background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='8' viewBox='0 0 36 8'%3E%3Cpath d='M1 5 Q5.5 1 10 5 T19 5 T28 5 T37 5' fill='none' stroke='%2317150F' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat:repeat-x; background-position:left bottom 2px; background-size:36px 8px;}
+  div[data-baseweb="tab-highlight"], div[data-baseweb="tab-border"] {display:none;}
+  /* cards, tables, widgets */
+  div[data-testid="stMetric"] {background:#FBF9F4; border:1px solid #E4DDD0;
+       border-radius:14px; padding:10px 14px; box-shadow:0 1px 2px rgba(23,21,15,.05);}
+  div[data-testid="stMetricLabel"] p {color:#8D8677; font-size:11px !important;
+       text-transform:uppercase; letter-spacing:.06em;}
+  div[data-testid="stMetricValue"] {color:#17150F; font-size:22px;
+       font-variant-numeric:tabular-nums;}
+  .stDataFrame {border:1px solid #E4DDD0; border-radius:14px;
+       box-shadow:0 1px 2px rgba(23,21,15,.05);}
+  div[data-testid="stExpander"] {background:#FBF9F4; border:1px solid #E4DDD0;
+       border-radius:14px;}
+  .stButton > button {background:#17150F; color:#F2EFE8; border:none;
+       border-radius:999px; padding:.45rem 1.3rem; font-weight:600;
+       transition:transform .12s ease;}
+  .stButton > button:hover {transform:translateY(-1px); color:#F2EFE8; background:#2A261C;}
+  section[data-testid="stSidebar"] {border-right:1px solid #E4DDD0;}
+  /* phones and small screens */
+  @media (max-width: 640px) {
+    .block-container {padding-left:.65rem; padding-right:.65rem; padding-top:.7rem;}
+    .mf-head {flex-wrap:wrap; gap:8px 10px; row-gap:4px;}
+    .mf-sub {flex-basis:100%; font-size:11px; line-height:1.5;}
+    .mf-title {font-size:15px;}
+    .mf-hero {padding:22px 2px 20px 2px;}
+    .mf-hero::before {width:280px; height:240px; left:-70px; top:-50px;}
+    .mf-band {padding:22px 20px;}
+    button[data-baseweb="tab"] {font-size:11px; letter-spacing:.10em;}
+    div[data-baseweb="tab-list"] {overflow-x:auto; -webkit-overflow-scrolling:touch;
+        scrollbar-width:none; gap:14px;}
+    div[data-baseweb="tab-list"]::-webkit-scrollbar {display:none;}
+    div[data-testid="stMetricValue"] {font-size:19px;}
+    h2, h3 {font-size:14px !important;}
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -97,20 +166,23 @@ def _num(x):
     return "—" if x is None or (isinstance(x, float) and x != x) else f"{x:.2f}"
 
 
-GREEN, RED, NEUTRAL = "#33b27b", "#f0563f", "#cdd3dc"
-AMBER = "#ffa53c"
+GREEN, RED, NEUTRAL = "#147A52", "#C2452D", "#17150F"
+AMBER = "#B98A46"  # app accent (bronze ink)
 
 
 def tiles_html(items, cols=4):
     """items: list of (label, value_str, colour). Returns a tile-grid HTML string."""
     cells = "".join(
-        f'<div style="background:#13161d;border:1px solid #262a33;border-radius:4px;padding:9px 11px">'
-        f'<div style="color:#6a7079;font-size:10px;text-transform:uppercase;letter-spacing:.06em">{lab}</div>'
-        f'<div style="font-family:\'SF Mono\',Consolas,monospace;font-size:21px;color:{col};'
+        f'<div style="background:#FBF9F4;border:1px solid #E4DDD0;'
+        f'border-left:3px solid {col if col in (GREEN, RED) else "#E4DDD0"};'
+        f'border-radius:14px;padding:9px 12px;box-shadow:0 1px 2px rgba(23,21,15,.05)">'
+        f'<div style="color:#8D8677;font-size:11px;text-transform:uppercase;letter-spacing:.05em">{lab}</div>'
+        f'<div style="font-size:21px;color:{col};'
         f'font-variant-numeric:tabular-nums">{val}</div></div>'
         for lab, val, col in items
     )
-    return (f'<div style="display:grid;grid-template-columns:repeat({cols},1fr);'
+    return (f'<div style="display:grid;'
+            f'grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));'
             f'gap:8px;margin:6px 0 14px">{cells}</div>')
 
 
@@ -126,11 +198,11 @@ def learn(text: str, icon: str = "🎓"):
 
 
 def task_card(emoji, title, tab, desc, when):
-    return (f'<div style="background:#13161d;border:1px solid #262a33;border-left:3px solid #ffa53c;'
+    return (f'<div style="background:#ffffff;border:1px solid #E4DDD0;border-left:3px solid #8D8677;'
             f'border-radius:8px;padding:13px 15px;margin-bottom:10px">'
-            f'<div style="font-size:15px;color:#ffa53c;font-weight:600">{emoji}&nbsp; {title}</div>'
-            f'<div style="font-size:13px;color:#cdd3dc;margin:5px 0 6px">{desc}</div>'
-            f'<div style="font-size:12px;color:#6a7079">→ open the <b style="color:#cdd3dc">{tab}</b> '
+            f'<div style="font-size:15px;color:#8D8677;font-weight:600">{emoji}&nbsp; {title}</div>'
+            f'<div style="font-size:13px;color:#17150F;margin:5px 0 6px">{desc}</div>'
+            f'<div style="font-size:12px;color:#8D8677">→ open the <b style="color:#17150F">{tab}</b> '
             f'tab&nbsp;·&nbsp;{when}</div></div>')
 
 
@@ -139,15 +211,42 @@ fund_list = funds(conn)
 name_by_code = {c: n for c, n in fund_list}
 codes = [c for c, _ in fund_list]
 
+# ---------------------------------------------------------- daily data refresh
+# Keep the shipped snapshot current: if the newest NAV has fallen more than a
+# few days behind, re-fetch the cached funds once per day per running server.
+# Safe before bootstrap: an empty database is never "stale", only unbuilt.
+import datetime as _dt
+
+
+@st.cache_resource(show_spinner=False)
+def _daily_refresh(day_key: str) -> dict:
+    out = FRESH.refresh_if_stale(conn)
+    if out.get("updated"):
+        funds.clear()
+    return out
+
+
+if FRESH.is_stale(conn):
+    with st.spinner("Fetching the latest NAVs from mfapi.in… (happens about once a day)"):
+        _fresh = _daily_refresh(str(_dt.date.today()))
+else:
+    _fresh = _daily_refresh(str(_dt.date.today()))
+_data_to = FRESH.latest_nav_date(conn)
+
 n_schemes = D.count_schemes(conn)
+_fresh_bit = f'data to {_data_to:%d %b %Y} · ' if _data_to is not None else ''
 st.markdown(
-    '<div class="mf-top"></div>'
     '<div class="mf-head"><span class="mf-tag">MFRIP</span>'
     '<span class="mf-title">Fund Intelligence</span>'
-    f'<span class="mf-sub">point-in-time · no-lookahead · {n_schemes:,} funds searchable · '
+    f'<span class="mf-sub">point-in-time · no-lookahead · {_fresh_bit}'
+    f'{n_schemes:,} funds searchable · '
     f'{len(codes)} cached</span></div>',
     unsafe_allow_html=True,
 )
+if _fresh.get("ran") and _fresh.get("updated", 0) == 0 and _data_to is not None:
+    st.caption(f"Tried to update fund data, but the public source (mfapi.in) wasn't reachable "
+               f"just now. Showing data up to {_data_to:%d %b %Y}; it retries automatically "
+               "tomorrow, or sooner if the app restarts.")
 
 from mfrip.webapp import bootstrap as BOOT
 if BOOT.needs_bootstrap(conn):
@@ -232,7 +331,7 @@ def weight_editor(picks, by_amount, slot):
     total = sum(vals)
     if by_amount:
         st.markdown(f"<div style='font-size:13px;color:#9aa3ad'>Total invested: "
-                    f"<b style='color:#cdd3dc'>₹{total:,.0f}</b></div>", unsafe_allow_html=True)
+                    f"<b style='color:#17150F'>₹{total:,.0f}</b></div>", unsafe_allow_html=True)
     else:
         ok = abs(total - 100.0) < 0.1
         msg = "" if ok else " (should add up to 100%)"
@@ -345,13 +444,20 @@ def coverage_report(code_list):
     return "\n".join(lines) + tail
 
 
-tab_home, tab_explore, tab_compare, tab_lab, tab_research, tab_advisor = st.tabs(
-    ["START HERE", "EXPLORE A FUND", "COMPARE FUNDS", "PORTFOLIO LAB", "RESEARCH", "ADVISOR"])
+tab_home, tab_explore, tab_screener, tab_compare, tab_lab, tab_research, tab_advisor = st.tabs(
+    ["START HERE", "EXPLORE A FUND", "SCREENER", "COMPARE FUNDS", "PORTFOLIO LAB", "RESEARCH", "ADVISOR"])
 
 # ================================================================= START HERE
 with tab_home:
-    st.markdown("#### Welcome to MFRIP")
-    st.markdown(GLOSS.PHILOSOPHY)
+    st.markdown(
+        '<div class="mf-hero">'
+        '<h1><span class="squig">Honest</span> research for<br>mutual fund decisions.</h1>'
+        '<p>No predictions, no black boxes. Every score, chart, and verdict shows its full working, '
+        'so you can see exactly how we got there.</p>'
+        '<a class="mf-pill" href="#pick-a-task">Pick a task ↓</a>'
+        '</div>', unsafe_allow_html=True)
+    _phil = GLOSS.PHILOSOPHY.replace("'", "&#39;")
+    st.markdown(f'<div class="mf-band"><p>{_phil}</p></div>', unsafe_allow_html=True)
     st.caption("Educational tool, not investment advice. Past performance does not predict future returns.")
 
     if beginner():
@@ -367,6 +473,7 @@ with tab_home:
         st.info("New to investing? Flip on **🎓 Beginner mode** in the left sidebar. Every chart, score, and "
                 "number then gets a plain-language explanation, so you can learn as you go.", icon="🎓")
 
+    st.markdown('<div id="pick-a-task"></div>', unsafe_allow_html=True)
     st.subheader("What would you like to do?")
     st.caption("Pick whichever fits. Each one opens in its own tab along the top.")
     cc = st.columns(2)
@@ -764,11 +871,11 @@ with tab_lab:
                 body += (f'<tr><td style="color:#9aa3ad">{label}</td>{cells}</tr>')
             st.markdown(
                 f'<table style="width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 4px">'
-                f'<thead><tr><th style="text-align:left;color:#ffa53c;font-size:10px;'
-                f'text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-bottom:1px solid #ffa53c33">Metric</th>'
+                f'<thead><tr><th style="text-align:left;color:#8D8677;font-size:11px;'
+                f'text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-bottom:1px solid #dbe4ff">Metric</th>'
                 f'{head.replace("<th ", "<th class=num-h ")}</tr></thead><tbody>{body}</tbody></table>'
-                '<style>.num-h{color:#ffa53c;font-size:10px;text-transform:uppercase;letter-spacing:.06em;'
-                'padding:6px 10px;border-bottom:1px solid #ffa53c33;font-family:SF Mono,Consolas,monospace}'
+                '<style>.num-h{color:#8D8677;font-size:11px;text-transform:uppercase;letter-spacing:.06em;'
+                'padding:6px 10px;border-bottom:1px solid #dbe4ff}'
                 'tbody td{padding:6px 10px;border-bottom:1px solid #20242c}</style>',
                 unsafe_allow_html=True,
             )
@@ -1080,14 +1187,14 @@ def _build_profile():
 
 def _health_block(health, stats):
     score = health.overall
-    col = GREEN if score >= 75 else "#ffa53c" if score >= 55 else RED
-    st.markdown(f"<div style='font-size:13px;color:#6a7079'>PORTFOLIO HEALTH</div>"
+    col = GREEN if score >= 75 else "#f08c00" if score >= 55 else RED
+    st.markdown(f"<div style='font-size:13px;color:#8D8677'>PORTFOLIO HEALTH</div>"
                 f"<div style='font-family:SF Mono,monospace;font-size:42px;color:{col};line-height:1'>"
-                f"{score:.0f}<span style='font-size:18px;color:#6a7079'>/100</span></div>",
+                f"{score:.0f}<span style='font-size:18px;color:#8D8677'>/100</span></div>",
                 unsafe_allow_html=True)
     items = []
     for k, v in health.parts.items():
-        c = GREEN if v >= 75 else "#ffa53c" if v >= 50 else RED
+        c = GREEN if v >= 75 else "#f08c00" if v >= 50 else RED
         items.append((k, f"{v:.0f}", c))
     st.markdown(tiles_html(items, cols=3), unsafe_allow_html=True)
     learn("The **Portfolio Health Score** (0 to 100) blends six checks: diversification, risk match, consistency, "
@@ -1245,3 +1352,82 @@ with tab_advisor:
                                         f"({_SLEEVE_LABEL_APP.get(p.sleeve, p.sleeve)}) · score {p.composite:.0f}/100")
                         if rec.gaps:
                             st.caption("No cached fund for: " + ", ".join(rec.gaps))
+
+
+# ================================================================= SCREENER
+with tab_screener:
+    st.subheader("Fund screener · every fund, one comparable table")
+    learn("A screener lets you scan many funds at once instead of opening them one at a time. Every fund here is "
+          "measured as of the same date so the comparison is fair. 6M and 1Y are the total return over that period; "
+          "3Y and 5Y are per-year (annualised). 'vs Cat' is how far the fund's 3-year return sits above or below "
+          "the middle fund of its category. Risk (volatility and worst fall) is measured over the same recent "
+          "3 years for everyone. The Score is where the fund ranks among its own category peers, 0 to 100, "
+          "leaning toward consistency and downside protection rather than chasing last year's winner. "
+          "Click any column heading to sort.")
+    with st.spinner("Measuring every fund as of a common date..."):
+        _scr = SCR.build_screener(conn)
+    if _scr.empty:
+        st.info("No funds with enough NAV history to screen yet. As more funds are added to the database they will "
+                "show up here automatically.")
+    else:
+        _asof = None
+        _f1, _f2 = st.columns([2, 1])
+        _q = _f1.text_input("Search fund", "", key="scr_q",
+                            placeholder="Type part of a fund name...")
+        _cats = ["All categories"] + sorted(_scr["Category"].unique())
+        _pick = _f2.selectbox("Category", _cats, key="scr_cat")
+        _view = _scr
+        if _pick != "All categories":
+            _view = _view[_view["Category"] == _pick]
+        if _q.strip():
+            _view = _view[_view["Fund"].str.contains(_q.strip(), case=False, regex=False)]
+
+        _med3 = _view["3Y"].dropna()
+        st.markdown(tiles_html([
+            ("Funds", f"{len(_view)}", NEUTRAL),
+            ("Categories", f"{_view['Category'].nunique()}", NEUTRAL),
+            ("Median 3Y return", f"{_med3.median():+.1f}%" if len(_med3) else "—",
+             GREEN if len(_med3) and _med3.median() >= 0 else RED if len(_med3) else NEUTRAL),
+            ("Scored vs peers", f"{int(_view['Score'].notna().sum())}", NEUTRAL),
+        ], cols=4), unsafe_allow_html=True)
+
+        if _view.empty:
+            st.caption("Nothing matches that search in this category.")
+        else:
+            _compact = st.toggle("Compact columns · best on phones", key="scr_compact",
+                                 help="Shows just the essentials: fund, 1Y, 3Y, vs category, and Score. "
+                                      "Turn off for the full table with risk columns.")
+            _show = _view.drop(columns=["_sleeve", "_stale"])
+            if _compact:
+                _show = _show[[c for c in ["Fund", "1Y", "3Y", "vs Cat", "Score"]
+                               if c in _show.columns]]
+            st.dataframe(SCR.style_screener(_show), hide_index=True, width='stretch')
+            _stale_n = int(_view["_stale"].sum())
+            _note = (f" {_stale_n} fund(s) have NAVs more than {SCR.STALE_DAYS} days behind the common date, so "
+                     "their period columns are blank rather than compared over a different window."
+                     if _stale_n else "")
+            st.caption("All returns are measured to the same date. 6M and 1Y are total returns; 3Y and 5Y are "
+                       "per-year. Volatility and worst drawdown cover the same trailing 3 years for every fund. "
+                       "A blank cell means the fund lacks enough history for that column, never a made-up number."
+                       + _note)
+
+        st.markdown("---")
+        st.subheader("Leaders & laggards · by 3-year return")
+        st.caption(f"The strongest and weakest in each category over three years. Categories with fewer than "
+                   f"{SCR.MIN_PEERS} funds are skipped because a handful of funds cannot be ranked meaningfully.")
+        _ll = SCR.leaders_laggards(_view if _pick != "All categories" else _scr, by="3Y", n=5)
+        if not _ll:
+            st.caption("Not enough funds with 3-year history in any category yet to rank leaders and laggards.")
+        else:
+            for _sl, (_top, _bottom) in _ll.items():
+                with st.expander(SCR.SLEEVE_LABEL.get(_sl, _sl.title()), expanded=(_pick != "All categories")):
+                    _cols_show = [c for c in ["Fund", "3Y", "vs Cat", "Score"] if c in _top.columns]
+                    _l, _r = st.columns(2)
+                    _l.markdown("**Leaders**")
+                    _l.dataframe(SCR.style_screener(_top[_cols_show]), hide_index=True, width='stretch')
+                    _r.markdown("**Laggards**")
+                    _r.dataframe(SCR.style_screener(_bottom[_cols_show]), hide_index=True, width='stretch')
+
+        st.caption("Fund size (AUM), expense ratio and third-party star ratings are not in the free data source, "
+                   "so MFRIP shows its own computed, percentile-based score instead of pretending to have them. "
+                   "Past returns are history, not a prediction. Educational, not investment advice.")
