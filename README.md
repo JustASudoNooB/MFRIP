@@ -1,12 +1,29 @@
 # MFRIP: Mutual Fund Research and Intelligence Platform
 
 **An explainable suitability and research tool for Indian mutual funds.**
+
+### 🔗 [Use it live, right now: mfripmain.streamlit.app](https://mfripmain.streamlit.app)
+
+No installation, no signup. Works on any phone, tablet, or computer with a browser.
+
+![Tests](https://img.shields.io/badge/tests-135%20passing-2ea44f) ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB) ![Streamlit](https://img.shields.io/badge/built%20with-Streamlit-FF4B4B) ![Data](https://img.shields.io/badge/data-mfapi.in-b98a46)
+
 MFRIP does not predict which fund will win, that is not knowable, and any tool
 claiming it should be distrusted. Instead it answers a more honest and more
 useful question: *is this fund, or this portfolio, built sensibly and suited to
 you?*, and it shows its full working so you can verify rather than trust.
 
 > Educational tool, not investment advice. Past performance does not predict future returns.
+
+## New here? Two-minute tour
+
+1. Open the [live app](https://mfripmain.streamlit.app) and flip on **🎓 Beginner mode** in the left sidebar. Every chart and score then explains itself in plain language.
+2. Go to **Explore a fund**, search any Indian mutual fund by name (all 37,000+ are searchable), and scroll: returns, risk, how it behaved in past crashes, and a Monte Carlo goal planner for your SIP.
+3. Try the **Screener** to compare every fund side by side, or the **Advisor** to enter funds you own and get an honest health check with suggestions.
+4. The header always shows **"data to <date>"**: the app refreshes its NAVs from mfapi.in daily, and tells you plainly if the source is ever unreachable.
+
+Found something confusing or broken? Feedback is very welcome: open an
+[issue](../../issues) on this repo or message me directly.
 
 ---
 
