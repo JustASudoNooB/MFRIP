@@ -14,6 +14,8 @@ given investor, and it shows its working.
 - **No-lookahead.** Every metric is computed only from data available at the relevant date. When a portfolio is reconstructed, each fund contributes only from the first date *all* its constituents have data, so no series is silently back-filled or forward-filled with hindsight. This is enforced in the reconstruction layer and protected by tests.
 - **Risk-free rate.** A single, auditable assumption (6.5% annual) used for Sharpe/Sortino, defined in `config.py`.
 
+**Freshness.** The deployed app ships with a snapshot database and keeps itself current: on startup it checks the newest NAV date and, when that has fallen more than a few days behind (a long weekend is normal, so the threshold is 4 days), it re-downloads the cached funds' histories from mfapi.in, at most once per day per running server. The header always states 'data to <date>'; when the source is unreachable the app opens with what it has and says so on screen rather than failing or hiding the staleness.
+
 ## 2. Core risk and return metrics
 
 All computed from the NAV series (which is already net of fund expenses):
@@ -137,8 +139,13 @@ factors and says so:
 | Sharpe | 0.19 | risk-adjusted return |
 | Max drawdown | 0.18 | shallower worst-case falls |
 
-Each factor is **min-max normalised within the sleeve's candidate set**, so a
-fund is judged against its true peers, then combined. A confidence figure scales
+Each factor is expressed as a **percentile rank within the sleeve's candidate
+set** (best = 100, worst = 0, ties share the average rank), so a fund is judged
+against its true peers, then combined. Percentile ranks were chosen over min-max
+scaling deliberately: one extreme fund can stretch a min-max scale and squash
+every other fund's scores together, while ranks are robust to outliers. This is
+also how Value Research and Morningstar place a fund within its category. A
+confidence figure scales
 with history length and penalises very high volatility.
 
 ## 9a. Walk-forward validation of the ranking
@@ -152,6 +159,22 @@ factor.
 - **What honest results look like.** Risk characteristics (consistency, drawdowns, volatility) tend to persist out-of-sample more strongly than raw returns, so a truthful tool usually shows higher risk persistence than return persistence. That is a feature, not a defect: it is exactly why the composite ranks on risk-adjusted behaviour rather than chasing past performance. When the signal is weak, the app says so plainly rather than hiding it.
 - **Validated against ground truth.** The engine is itself tested on synthetic funds with a known latent quality: when quality persists across the cutoff it must recover a strong positive correlation, and when post-cutoff quality is randomised the correlation at the aligned cutoff must collapse to near zero. Both hold (see §14).
 - **Honest framing.** This tests whether the ranking is *informative and consistent*, not whether any individual fund will outperform. Survivorship and the limits of the free data source (§1, §13) still apply.
+
+## 9b. The screener
+
+The screener puts every fund in the database into one comparable table. Its
+rules are strict about comparability, because a table that mixes measurement
+windows is quietly misleading:
+
+- **Common valuation date.** All period returns are measured to one shared date (the latest NAV anywhere in the universe). A fund whose own NAV is more than 21 days behind that date is listed, but its period columns are left blank rather than silently compared over a different window.
+- **Return conventions.** 6M and 1Y are total returns over the period; 3Y and 5Y are annualised. A cell is blank when the fund lacks about 90% of the requested window (never a fabricated number).
+- **Common risk window.** Volatility and worst drawdown cover the same trailing three years for every fund, so a 20-year fund is not penalised for a crash a younger fund never lived through. Blank below roughly 2.75 years of history.
+- **vs Cat.** The fund's 3Y return minus its category's median 3Y, in percentage points, shown only when the category has at least 3 funds.
+- **Score.** The §9 composite (percentile-based within category). Categories with fewer than 3 funds are not scored, because a percentile among two funds is nearly meaningless.
+
+Fund size (AUM), expense ratio, and third-party star ratings are not in the free
+data source, so the screener shows only what it can compute from NAV and says so
+on screen.
 
 ## 10. Portfolio Health Score (0–100)
 
@@ -199,7 +222,7 @@ So MFRIP is a **transparent, rules-based suitability engine**. "Correct" means
 
 ## 14. Testing
 
-118 tests, including: the no-lookahead integrity test; XIRR against a flat-NAV
+135 tests, including: the no-lookahead integrity test; XIRR against a flat-NAV
 control; capture ratios against known aggressive/defensive funds; goal-projection
 monotonicity; suitability-engine constraints (e.g. an all-equity portfolio with
 no emergency fund must be blocked); category-benchmark resolution and fallback;

@@ -1,0 +1,27 @@
+creator: Ankur Warikoo
+advisor: Feroz Aziz
+source_platform: YouTube (ET panel)
+rec_date: 2025-11-08
+risk_profile: Aggressive
+horizon: long-term
+total_amount: 1000000
+buckets:
+  - asset_class: equity
+    amount: 800000
+    funds:
+      - {name: "Quant Large Cap",      search: "Quant Large Cap Direct Growth"}
+      - {name: "SBI Large & Mid Cap",  search: "SBI Large Midcap Direct Growth"}
+      - {name: "Canara Robeco Multi Cap", search: "Canara Robeco Multi Cap Direct Growth"}
+      - {name: "Invesco India Smallcap", search: "Invesco India Smallcap Direct Growth"}
+      - {name: "HDFC Flexi Cap",       search: "HDFC Flexi Cap Direct Growth"}
+      - {name: "Kotak Mid Cap",        search: "Kotak Midcap Direct Growth"}
+      - {name: "ICICI Pru Focused Equity", search: "ICICI Prudential Focused Equity Direct Growth"}
+  - asset_class: debt
+    amount: 100000
+    funds:
+      - {name: "Axis CRISIL IBX SDL June 2034 Debt Index", search: "Axis CRISIL IBX SDL June 2034 Index Direct Growth"}
+      - {name: "HDFC Nifty G-Sec Jun 2036 Index", search: "HDFC NIFTY G-Sec Jun 2036 Index Direct Growth"}
+  - asset_class: gold
+    amount: 100000
+    funds:
+      - {name: "Gold ETF (proxy: Nippon Gold Savings)", search: "Nippon India Gold Savings Direct Growth"}

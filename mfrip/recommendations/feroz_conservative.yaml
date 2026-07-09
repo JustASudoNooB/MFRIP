@@ -1,0 +1,24 @@
+creator: Ankur Warikoo
+advisor: Feroz Aziz
+source_platform: YouTube (ET panel)
+rec_date: 2025-11-08
+risk_profile: Conservative
+horizon: long-term
+total_amount: 1000000
+buckets:
+  - asset_class: equity
+    amount: 600000
+    funds:
+      - {name: "Quant Large Cap",   search: "Quant Large Cap Direct Growth"}
+      - {name: "SBI Large & Mid Cap", search: "SBI Large Midcap Direct Growth"}
+      - {name: "HDFC Flexi Cap",     search: "HDFC Flexi Cap Direct Growth"}
+      - {name: "Kotak Multicap",     search: "Kotak Multicap Direct Growth"}
+  - asset_class: debt
+    amount: 300000
+    funds:
+      - {name: "ICICI Pru Nifty SDL Dec 2028 Index", search: "ICICI Prudential Nifty SDL Sep 2027 Index Direct Growth", note: "verify: SDL target-maturity index fund"}
+      - {name: "Kotak Nifty SDL Plus AAA PSU Bond Jul 2028 60:40 Index", search: "Kotak Nifty SDL Plus AAA PSU Bond Jul 2028 Direct Growth"}
+  - asset_class: gold
+    amount: 100000
+    funds:
+      - {name: "Gold ETF (proxy: Nippon Gold Savings)", search: "Nippon India Gold Savings Direct Growth"}

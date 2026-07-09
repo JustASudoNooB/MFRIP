@@ -1,0 +1,27 @@
+creator: Ankur Warikoo
+advisor: Inderbir Singh Jolly
+source_platform: YouTube (ET panel)
+rec_date: 2025-11-08
+risk_profile: Aggressive (variant 2)
+horizon: long-term
+total_amount: 1000000
+buckets:
+  - asset_class: equity
+    amount: 500000
+    funds:
+      - {name: "Nippon India Large Cap", search: "Nippon India Large Cap Direct Growth"}
+      - {name: "HDFC Flexicap",          search: "HDFC Flexi Cap Direct Growth"}
+  - asset_class: hybrid
+    amount: 200000
+    funds:
+      - {name: "ICICI Pru Equity and Debt", search: "ICICI Prudential Equity Debt Direct Growth"}
+      - {name: "HDFC Balanced Advantage",   search: "HDFC Balanced Advantage Direct Growth"}
+  - asset_class: debt
+    amount: 200000
+    funds:
+      - {name: "Kotak Income Plus Arbitrage Omni FoF", search: "Kotak Income Plus Arbitrage Direct Growth"}
+      - {name: "ICICI Pru Arbitrage", search: "ICICI Prudential Arbitrage Direct Growth"}
+  - asset_class: alternatives
+    amount: 100000
+    funds:
+      - {name: "REITs / InVITs", included: false, note: "not mutual funds - excluded"}

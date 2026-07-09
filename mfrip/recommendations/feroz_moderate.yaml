@@ -1,0 +1,48 @@
+# Feroz Aziz - Moderate Risk plan
+# Source: Ankur Warikoo "Where and How Should You INVEST in 2026?" (8 Nov 2025),
+# reproducing the Economic Times "Where to Invest 10 Lakh" expert panel.
+#
+# Plan as shown: Equity Rs 7L / Debt Rs 2L / Gold ETF Rs 1L  (total Rs 10L).
+# Assumptions (change freely):
+#   - Funds within a bucket are equal-weighted (slide gave no individual split).
+#   - Direct - Growth plans assumed throughout.
+#   - "Gold ETF" is proxied by a gold mutual fund so it has a NAV.
+#   - 'search' hints override the display name where the official scheme name
+#     differs from the slide shorthand (e.g. Kotak's mid-cap fund).
+#
+# After loading, eyeball the resolved names the resolver prints and fix any
+# wrong scheme_code with:  cli rec-fix <rec_id> "<display_name>" <code>
+
+creator: Ankur Warikoo
+advisor: Feroz Aziz
+source_platform: YouTube (ET panel)
+source_url: https://www.youtube.com/watch?v=itbMOuP7fRM
+rec_date: 2025-11-08
+risk_profile: Moderate
+horizon: long-term
+rationale: >
+  Diversify equity across market caps (50-55% large, 20-25% mid, rest small);
+  debt via target-maturity G-Sec index funds; gold as a hedge.
+total_amount: 1000000
+
+buckets:
+  - asset_class: equity
+    amount: 700000
+    funds:
+      - {name: "DSP Large and Mid Cap",   search: "DSP Large Midcap Direct Growth"}
+      - {name: "Kotak Multicap",           search: "Kotak Multicap Direct Growth"}
+      - {name: "Invesco India Smallcap",   search: "Invesco India Smallcap Direct Growth"}
+      - {name: "HDFC Flexi Cap",           search: "HDFC Flexi Cap Direct Growth"}
+      - {name: "Kotak Mid Cap",            search: "Kotak Emerging Equity Direct Growth"}
+      - {name: "ICICI Pru Dividend Yield", search: "ICICI Prudential Dividend Yield Equity Direct Growth"}
+
+  - asset_class: debt
+    amount: 200000
+    funds:
+      - {name: "HDFC Nifty G-Sec Jul 2031 Index",  search: "HDFC NIFTY G-Sec Jul 2031 Index Direct Growth"}
+      - {name: "ICICI Pru Nifty G-Sec Dec 2030 Index", search: "ICICI Prudential Nifty G-Sec Dec 2030 Index Direct Growth"}
+
+  - asset_class: gold
+    amount: 100000
+    funds:
+      - {name: "Gold ETF (proxy: Nippon Gold Savings)", search: "Nippon India Gold Savings Direct Growth", note: "Gold ETF proxied by a gold fund for NAV pricing"}

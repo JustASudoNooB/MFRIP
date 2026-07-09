@@ -1,0 +1,24 @@
+creator: Ankur Warikoo
+advisor: Chanchal Agarwal
+source_platform: YouTube (ET panel)
+rec_date: 2025-11-08
+risk_profile: Conservative
+horizon: long-term
+total_amount: 1000000
+buckets:
+  - asset_class: equity
+    amount: 400000
+    funds:
+      - {name: "SBI Focused Fund",        search: "SBI Focused Equity Direct Growth"}
+      - {name: "ICICI Pru Large Cap Fund", search: "ICICI Prudential Bluechip Direct Growth", note: "ICICI's large-cap fund (Bluechip); verify"}
+      - {name: "Canara Robeco Large and Midcap", search: "Canara Robeco Emerging Equities Direct Growth", note: "Canara Robeco's large&mid fund; verify"}
+  - asset_class: debt
+    amount: 500000
+    funds:
+      - {name: "ICICI Pru Short Term",  search: "ICICI Prudential Short Term Direct Growth"}
+      - {name: "Fixed Deposit", included: false, note: "not a mutual fund - excluded"}
+      - {name: "Direct high-rated bonds", included: false, note: "not a mutual fund - excluded"}
+  - asset_class: gold
+    amount: 100000
+    funds:
+      - {name: "Nippon Gold Savings", search: "Nippon India Gold Savings Direct Growth"}

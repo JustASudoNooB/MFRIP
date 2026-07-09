@@ -116,3 +116,47 @@ def test_nonpositive_monthly_raises():
     nav = _random_nav(seed=11)
     with pytest.raises(ValueError):
         MC.simulate_sip(nav, 0, 10)
+
+
+# ---- calendar-year (year-on-year) returns
+def _cy_nav(start, end, monthly_rate=0.0):
+    import pandas as pd, numpy as np
+    idx = pd.date_range(start, end, freq="B")
+    if monthly_rate == 0.0:
+        vals = np.full(len(idx), 100.0)
+    else:
+        dr = (1 + monthly_rate) ** (1 / 21) - 1
+        vals = 100.0 * np.cumprod(np.full(len(idx), 1 + dr))
+    return pd.Series(vals, index=idx)
+
+
+def test_calendar_year_flat_is_zero():
+    from mfrip.metrics.returns import calendar_year_returns
+    nav = _cy_nav("2020-01-01", "2022-12-31", 0.0)
+    cy = calendar_year_returns(nav)
+    assert [y for y, r, p in cy] == [2020, 2021, 2022]
+    for y, r, p in cy:
+        assert abs(r) < 1e-9
+        assert p is False  # full years, not partial
+
+
+def test_calendar_year_marks_partial_years():
+    from mfrip.metrics.returns import calendar_year_returns
+    nav = _cy_nav("2019-06-03", "2024-03-28", 0.0)
+    cy = calendar_year_returns(nav)
+    years = [y for y, r, p in cy]
+    partial = {y: p for y, r, p in cy}
+    assert years[0] == 2019 and partial[2019] is True    # starts mid-year
+    assert years[-1] == 2024 and partial[2024] is True   # ends mid-year
+    assert partial[2021] is False                        # full year
+
+
+def test_calendar_year_full_year_value():
+    from mfrip.metrics.returns import calendar_year_returns
+    import pandas as pd, numpy as np
+    # NAV doubles across 2021 exactly (Dec-2020 to Dec-2021)
+    idx = pd.date_range("2020-12-31", "2021-12-31", freq="D")
+    vals = np.linspace(100.0, 200.0, len(idx))
+    cy = calendar_year_returns(pd.Series(vals, index=idx))
+    got = {y: r for y, r, p in cy}
+    assert got[2021] == pytest.approx(1.0, rel=1e-6)     # +100%
