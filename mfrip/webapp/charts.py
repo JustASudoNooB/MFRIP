@@ -1,30 +1,30 @@
-"""Professional, interactive Plotly charts in the Bloomberg dark-amber palette.
+"""Professional, interactive Plotly charts in a clean, light, screener-style palette.
 
 Shared so the Streamlit app and any future surface render identical-looking
-charts. All figures are dark, amber-accented, with hover and zoom.
+charts. All figures are light, indigo-accented, with hover and zoom.
 """
 from __future__ import annotations
 
 import pandas as pd
 
-BG = "#0a0c10"
-PANEL = "#13161d"
-GRID = "#20242c"
-TEXT = "#cdd3dc"
-MUTED = "#6a7079"
-AMBER = "#ffa53c"
-CYAN = "#56b6c2"
-GRAY = "#6a7079"
-GREEN = "#33b27b"
-RED = "#f0563f"
+BG = "#F2EFE8"
+PANEL = "#EBE6DB"
+GRID = "#E4DDD0"
+TEXT = "#17150F"
+MUTED = "#8D8677"
+AMBER = "#17150F"  # primary line (ink)
+CYAN = "#B98A46"  # bronze
+GRAY = "#8D8677"
+GREEN = "#147A52"
+RED = "#C2452D"
 
 # colour cycle for multi-series (portfolio comparison etc.)
-SERIES = [AMBER, CYAN, "#a78bfa", GREEN, "#e8923c", "#7dd3fc"]
+SERIES = [AMBER, CYAN, "#7A6FB3", GREEN, "#C2452D", "#4C7A9B"]
 
 
 def _base(fig, height=340, ytitle=""):
     fig.update_layout(
-        template="plotly_dark",
+        template="plotly_white",
         paper_bgcolor=BG, plot_bgcolor=BG,
         font=dict(color=TEXT, size=12, family="Inter, Segoe UI, sans-serif"),
         margin=dict(l=8, r=10, t=10, b=8), height=height,
@@ -68,11 +68,11 @@ def growth_chart(series: dict[str, pd.Series], height=340):
         if single:
             up = float(s.iloc[-1]) >= float(s.iloc[0])
             colour = GREEN if up else RED
-            fillc = "rgba(51,178,123,0.13)" if up else "rgba(240,86,63,0.13)"
+            fillc = "rgba(20,122,82,0.13)" if up else "rgba(194,69,45,0.13)"
             filled = True
         else:
             colour = AMBER if i == 0 else (CYAN if i == 1 else SERIES[i % len(SERIES)])
-            fillc = "rgba(255,165,60,0.10)"
+            fillc = "rgba(23,21,15,0.07)"
             filled = (i == 0)
         fig.add_trace(go.Scatter(
             x=s.index, y=s.values, name=label, mode="lines",
@@ -112,11 +112,11 @@ def allocation_pie(labels, weights, title="", height=230):
     fig = go.Figure(go.Pie(
         labels=labels, values=weights, hole=0.56, sort=False,
         marker=dict(colors=cols, line=dict(color=BG, width=2)),
-        textinfo="percent", textfont=dict(size=11, color="#0a0c10"),
+        textinfo="percent", textfont=dict(size=11, color="#ffffff"),
         hovertemplate="%{label}: %{percent}<extra></extra>",
     ))
     fig.update_layout(
-        template="plotly_dark", paper_bgcolor=BG, plot_bgcolor=BG,
+        template="plotly_white", paper_bgcolor=BG, plot_bgcolor=BG,
         font=dict(color=TEXT, size=11), margin=dict(l=4, r=4, t=26, b=4),
         height=height, showlegend=False,
         title=dict(text=title, font=dict(size=12, color=AMBER), x=0.5, xanchor="center"),
@@ -176,9 +176,9 @@ def montecarlo_fan(sim: dict, height=360):
     import plotly.graph_objects as go
     x = sim["time_years"]
     b = sim["bands"]
-    AMBER_LO = "rgba(255,165,60,0.12)"
-    AMBER_MID = "rgba(255,165,60,0.24)"
-    EDGE = "rgba(255,165,60,0.45)"
+    AMBER_LO = "rgba(23,21,15,0.08)"
+    AMBER_MID = "rgba(23,21,15,0.16)"
+    EDGE = "rgba(23,21,15,0.40)"
     fig = go.Figure()
     # 10th-90th band (lower boundary first, then fill up to it)
     fig.add_trace(go.Scatter(x=x, y=b[10], mode="lines", name="10th percentile",
@@ -221,7 +221,7 @@ def goal_projection_chart(monthly: float, years: float,
         x=xs, y=invested, name="You invest", mode="lines",
         line=dict(color=MUTED, width=1.4, dash="dot"),
         hovertemplate="Year %{x:.0f}: ₹%{y:,.0f} put in<extra></extra>"))
-    palette = [GREEN, AMBER, CYAN, "#a78bfa"]
+    palette = [GREEN, AMBER, CYAN, "#7A6FB3"]
     for i, r in enumerate(sorted(rates)):
         mr = (1.0 + r) ** (1.0 / 12) - 1.0
         corpus = [monthly * (((1 + mr) ** m - 1) / mr) * (1 + mr) if m > 0 else 0.0 for m in months]
@@ -270,7 +270,7 @@ def rolling_range_chart(rows: list[dict], height=None):
     for r in rows:                                   # connector lines
         fig.add_trace(go.Scatter(
             x=[r["worst"], r["best"]], y=[r["window"], r["window"]], mode="lines",
-            line=dict(color="#3a3f49", width=5), showlegend=False, hoverinfo="skip"))
+            line=dict(color="#D8D0C0", width=5), showlegend=False, hoverinfo="skip"))
     fig.add_trace(go.Scatter(
         x=[r["worst"] for r in rows], y=labels, mode="markers+text",
         marker=dict(color=RED, size=14, line=dict(color=BG, width=1)),

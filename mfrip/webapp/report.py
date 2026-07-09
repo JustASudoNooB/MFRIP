@@ -22,18 +22,18 @@ from ..portfolio.reconstruct import reconstruct
 from ..recommend import schema
 from ..store import nav_store
 
-BG = "#0a0c10"
-PANEL = "#13161d"
-BORDER = "#262a33"
-TEXT = "#cdd3dc"
-MUTED = "#6a7079"
-NAVY = "#13161d"          # header bars (kept name for compatibility)
-ACCENT = "#ffa53c"        # Bloomberg amber, the single signature accent
-PASSIVE = "#56b6c2"       # cyan (chart line only)
-BENCH = "#6a7079"         # gray (chart line only)
-GOOD = "#33b27b"          # green, direction only
-BAD = "#f0563f"           # red, direction only
-GRID = "#20242c"
+BG = "#F2EFE8"
+PANEL = "#FBF9F4"
+BORDER = "#E4DDD0"
+TEXT = "#17150F"
+MUTED = "#8D8677"
+NAVY = "#EBE6DB"          # header bars (kept name for compatibility)
+ACCENT = "#B98A46"        # bronze, the single signature accent
+PASSIVE = "#7A6FB3"       # teal-cyan (chart line only)
+BENCH = "#8D8677"         # gray (chart line only)
+GOOD = "#147A52"          # green, direction only
+BAD = "#C2452D"           # red, direction only
+GRID = "#E4DDD0"
 
 
 # ---------- data gathering -------------------------------------------------
