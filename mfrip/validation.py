@@ -44,7 +44,13 @@ def _spearman(a, b) -> tuple[float, int]:
     s = pd.DataFrame({"a": np.asarray(a, float), "b": np.asarray(b, float)}).dropna()
     if len(s) < 3 or s["a"].nunique() < 2 or s["b"].nunique() < 2:
         return float("nan"), len(s)
-    return float(s["a"].corr(s["b"], method="spearman")), len(s)
+    # Spearman = Pearson correlation of the ranks (average ranks for ties).
+    # Computed this way deliberately: pandas' method="spearman" imports scipy
+    # under the hood, and this project runs without scipy. Verified identical
+    # to scipy's spearmanr to 1e-12, including tied values.
+    ra = s["a"].rank(method="average")
+    rb = s["b"].rank(method="average")
+    return float(ra.corr(rb)), len(s)
 
 
 def _perm_pvalue(a, b, n_perm: int = 2000, seed: int = 0) -> float:
