@@ -1,6 +1,6 @@
 <div align="center">
 MFRIP
-
+  
 Mutual Fund Research & Intelligence Platform
 
 An explainable suitability engine for Indian mutual funds, built to show its work.
