@@ -242,10 +242,6 @@ CONTRIBUTING.md : ground rules for anyone who wants to extend this.
 <br>
 Author
 
-Built by Akhand Raj, a dual-degree student (M.Sc. Economics + B.E.
-Mechanical Engineering) at BITS Pilani Hyderabad, targeting quantitative risk
-and markets roles.
-
 Questions, feedback, or bug reports: open an issue.
 
 <div align="center">
