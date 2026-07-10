@@ -25,6 +25,14 @@ you?*, and it shows its full working so you can verify rather than trust.
 Found something confusing or broken? Feedback is very welcome: open an
 [issue](../../issues) on this repo or message me directly.
 
+## A look inside
+
+| Start here | Screener | Explore a fund |
+|---|---|---|
+| ![Start here](docs/screenshots/start-here.png) | ![Screener](docs/screenshots/screener.png) | ![Explore](docs/screenshots/explore.png) |
+
+*Screenshots use a small demo dataset; open the [live app](https://mfripmain.streamlit.app) to search all real Indian funds.*
+
 ---
 
 ## What it does
@@ -122,7 +130,7 @@ Python · Streamlit · pandas · NumPy · Plotly · SQLite · mfapi.in (data)
 ## Project layout
 
 ```
-app.py                    Streamlit UI (six tabs)
+app.py                    Streamlit UI (seven tabs)
 mfrip/
   config.py               risk-free rate, benchmark, asset proxies
   ingest.py               scheme master + NAV download (retry/backoff)
@@ -136,4 +144,26 @@ mfrip/
   cli.py                  command-line tools
 recommendations/          advised plans (YAML)
 tests/                    135 tests
+docs/screenshots/         README images
+ARCHITECTURE.md           system map and data flow
+METHODOLOGY.md            every formula and rule, stated plainly
+CONTRIBUTING.md           ground rules for contributions
+LICENSE                   MIT
 ```
+
+## Architecture
+
+A full system map, the data flow diagram, and the testing philosophy live in
+[ARCHITECTURE.md](ARCHITECTURE.md). The finance methodology behind every number
+is documented, formula by formula, in [METHODOLOGY.md](METHODOLOGY.md).
+
+## Author
+
+Built by **Akhand Raj**, a dual-degree student (M.Sc. Economics + B.E.
+Mechanical Engineering) at BITS Pilani Hyderabad, targeting quantitative risk
+and markets roles. Feedback and questions are welcome via
+[GitHub issues](../../issues).
+
+## License
+
+MIT. See [LICENSE](LICENSE).

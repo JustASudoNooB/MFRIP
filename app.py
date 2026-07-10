@@ -55,6 +55,13 @@ st.markdown("""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
   #MainMenu, footer, header {visibility:hidden;}
+  /* self-contained canvas: the light theme must hold even if config.toml is absent */
+  .stApp {background:#F2EFE8 !important; color:#17150F;}
+  section[data-testid="stSidebar"] {background:#EBE6DB !important;}
+  section[data-testid="stSidebar"] * {color:#17150F;}
+  div[data-testid="stExpander"] summary, div[data-testid="stExpander"] summary p,
+  div[data-testid="stExpander"] p, .stApp label p, .stMarkdown p {color:#17150F;}
+  .stApp [data-testid="stCaptionContainer"] p {color:#8D8677;}
   .block-container {padding-top:1.0rem; padding-bottom:2.5rem; max-width:1180px;}
   html, body, [class*="css"] {font-family:'Inter','Segoe UI',sans-serif; color:#17150F;}
   h1,h2,h3,h4 {font-family:'Space Grotesk','Inter',sans-serif !important;
