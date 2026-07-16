@@ -73,22 +73,61 @@ def correlation_matrix(
     lookback: float | None,
     config: Config = DEFAULT_CONFIG,
 ) -> pd.DataFrame | None:
-    """Correlation of monthly returns among the given funds over the window."""
-    series: dict[str, pd.Series] = {}
+    """Correlation of monthly returns over a COMMON window.
+
+    Every fund is measured over the same window, ending at the newest NAV among
+    the selected funds. Funds that cannot reasonably cover that window (young
+    funds, or stale/discontinued plans whose NAVs stopped updating) are left
+    out and reported via ``result.attrs["excluded"]``, so the app can say who
+    was dropped and why, instead of one dead fund silently blanking the whole
+    matrix (each all-NaN row used to wipe every shared month on dropna).
+    Returns None when fewer than two funds share the window.
+    """
+    navs: dict[int, pd.Series] = {}
     for c in dict.fromkeys(codes):  # de-dup, keep order
         s = load_nav(conn, c)
-        if s.empty:
-            continue
-        try:
-            ws = window_stats(s, lookback, config)
-        except ValueError:
-            continue
-        pr = R.period_returns(s[s.index >= pd.Timestamp(ws.start)], config.periods_per_year)
-        label = name_by_code.get(c, str(c))
-        series[label[:22]] = pr
+        if not s.empty:
+            navs[c] = s.dropna().sort_index()
+    if len(navs) < 2:
+        return None
+
+    as_of = max(s.index[-1] for s in navs.values())
+    excluded: list[str] = []
+    fresh: dict[int, pd.Series] = {}
+    for c, s in navs.items():
+        label = name_by_code.get(c, str(c))[:22]
+        if (as_of - s.index[-1]).days > 21:          # stale or discontinued plan
+            excluded.append(label)
+        else:
+            fresh[c] = s
+    if len(fresh) < 2:
+        return None
+
+    if lookback:
+        window_start = as_of - pd.DateOffset(days=round(lookback * 365.25))
+        min_start = as_of - pd.DateOffset(days=round(0.7 * lookback * 365.25))
+        for c in list(fresh):
+            if fresh[c].index[0] > min_start:        # too young for this window
+                excluded.append(name_by_code.get(c, str(c))[:22])
+                fresh.pop(c)
+        if len(fresh) < 2:
+            return None
+    else:
+        window_start = max(s.index[0] for s in fresh.values())  # common full history
+
+    series: dict[str, pd.Series] = {}
+    for c, s in fresh.items():
+        label = name_by_code.get(c, str(c))[:22]
+        pr = R.period_returns(s.loc[window_start:as_of], config.periods_per_year)
+        if len(pr) >= 6:
+            series[label] = pr
+        else:
+            excluded.append(label)
     if len(series) < 2:
         return None
-    return pd.DataFrame(series).dropna().corr()
+    m = pd.DataFrame(series).dropna().corr()
+    m.attrs["excluded"] = excluded
+    return m
 
 
 def explain(results: dict[str, dict]) -> list[str]:

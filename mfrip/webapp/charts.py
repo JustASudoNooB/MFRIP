@@ -11,15 +11,15 @@ BG = "#F2EFE8"
 PANEL = "#EBE6DB"
 GRID = "#E4DDD0"
 TEXT = "#17150F"
-MUTED = "#8D8677"
-AMBER = "#17150F"  # primary line (ink)
-CYAN = "#B98A46"  # bronze
+MUTED = "#7A7264"
+AMBER = "#D9730D"  # primary line (deep amber)
+CYAN = "#0F766E"  # teal (second voice)
 GRAY = "#8D8677"
 GREEN = "#147A52"
 RED = "#C2452D"
 
 # colour cycle for multi-series (portfolio comparison etc.)
-SERIES = [AMBER, CYAN, "#7A6FB3", GREEN, "#C2452D", "#4C7A9B"]
+SERIES = [AMBER, CYAN, "#7A6FB3", "#147A52", "#C2452D", "#4C7A9B"]
 
 
 def _base(fig, height=340, ytitle=""):
@@ -72,7 +72,7 @@ def growth_chart(series: dict[str, pd.Series], height=340):
             filled = True
         else:
             colour = AMBER if i == 0 else (CYAN if i == 1 else SERIES[i % len(SERIES)])
-            fillc = "rgba(23,21,15,0.07)"
+            fillc = "rgba(217,115,13,0.10)"
             filled = (i == 0)
         fig.add_trace(go.Scatter(
             x=s.index, y=s.values, name=label, mode="lines",
@@ -176,9 +176,9 @@ def montecarlo_fan(sim: dict, height=360):
     import plotly.graph_objects as go
     x = sim["time_years"]
     b = sim["bands"]
-    AMBER_LO = "rgba(23,21,15,0.08)"
-    AMBER_MID = "rgba(23,21,15,0.16)"
-    EDGE = "rgba(23,21,15,0.40)"
+    AMBER_LO = "rgba(217,115,13,0.12)"
+    AMBER_MID = "rgba(217,115,13,0.24)"
+    EDGE = "rgba(217,115,13,0.45)"
     fig = go.Figure()
     # 10th-90th band (lower boundary first, then fill up to it)
     fig.add_trace(go.Scatter(x=x, y=b[10], mode="lines", name="10th percentile",

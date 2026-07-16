@@ -106,3 +106,34 @@ def test_permutation_pvalue_bounds():
 
 def test_insufficient_funds_returns_none():
     assert V.evaluate_window(_make_funds(n_funds=3, seed=7), CUTOFF, 3, 2, min_funds=5) is None
+
+
+def test_spearman_runs_without_scipy(monkeypatch):
+    """Regression guard: the cloud server has no scipy, so the validation must
+    never import it, even indirectly through pandas."""
+    import builtins
+    import sys
+
+    import numpy as np
+    import pandas as pd
+
+    from mfrip import validation as V
+
+    for mod in [m for m in list(sys.modules) if m.startswith("scipy")]:
+        sys.modules.pop(mod)
+    real_import = builtins.__import__
+
+    def block_scipy(name, *args, **kwargs):
+        if name.split(".")[0] == "scipy":
+            raise ModuleNotFoundError("scipy is blocked in this test")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", block_scipy)
+    a = pd.Series(np.arange(10.0))
+    rho, n = V._spearman(a, a)                      # perfectly monotone
+    assert abs(rho - 1.0) < 1e-12 and n == 10
+    rho_r, _ = V._spearman(a, a.iloc[::-1].reset_index(drop=True))
+    assert abs(rho_r + 1.0) < 1e-12                 # perfectly reversed
+    # ties handled with average ranks
+    rho_t, _ = V._spearman(pd.Series([1, 2, 2, 3, 4.0]), pd.Series([1, 3, 2, 4, 5.0]))
+    assert -1.0 <= rho_t <= 1.0

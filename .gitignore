@@ -1,0 +1,18 @@
+# scratch files only; the seed mfrip_data.db is committed on purpose
+mfrip_data.db-wal
+mfrip_data.db-shm
+*.log
+st.log
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/

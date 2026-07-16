@@ -61,7 +61,7 @@ st.markdown("""
   section[data-testid="stSidebar"] * {color:#17150F;}
   div[data-testid="stExpander"] summary, div[data-testid="stExpander"] summary p,
   div[data-testid="stExpander"] p, .stApp label p, .stMarkdown p {color:#17150F;}
-  .stApp [data-testid="stCaptionContainer"] p {color:#8D8677;}
+  .stApp [data-testid="stCaptionContainer"] p {color:#6B6455; font-size:13px; line-height:1.55;}
   .block-container {padding-top:1.0rem; padding-bottom:2.5rem; max-width:1180px;}
   html, body, [class*="css"] {font-family:'Inter','Segoe UI',sans-serif; color:#17150F;}
   h1,h2,h3,h4 {font-family:'Space Grotesk','Inter',sans-serif !important;
@@ -78,7 +78,7 @@ st.markdown("""
            font-weight:800; font-size:17px; letter-spacing:.14em; padding:0;}
   .mf-title {color:#17150F; font-family:'Space Grotesk',sans-serif;
              font-size:17px; font-weight:600;}
-  .mf-sub {color:#8D8677; font-size:12px;}
+  .mf-sub {color:#6B6455; font-size:12px;}
   /* hero */
   .mf-hero {position:relative; padding:34px 8px 30px 8px; overflow:visible;}
   .mf-hero::before {content:""; position:absolute; top:-60px; left:-90px;
@@ -174,7 +174,7 @@ def _num(x):
 
 
 GREEN, RED, NEUTRAL = "#147A52", "#C2452D", "#17150F"
-AMBER = "#B98A46"  # app accent (bronze ink)
+AMBER = "#C05F0E"  # app accent (deep amber, readable on paper)
 
 
 def tiles_html(items, cols=4):
@@ -905,11 +905,19 @@ with tab_lab:
 
             # ---- correlation matrix
             cm = PL.correlation_matrix(conn, all_codes, name_by_code, lab_lb)
+            st.subheader("Correlation of holdings")
             if cm is not None and len(cm) >= 2:
-                st.subheader("Correlation of holdings")
                 learn("This grid shows how similarly your funds move. High numbers mean they rise and fall together (less protection); low numbers mean they balance each other out.")
                 st.plotly_chart(C.correlation_heat(cm, height=min(420, 80 + 38 * len(cm))),
                                 width='stretch', config={"displayModeBar": False})
+                _left_out = cm.attrs.get("excluded", [])
+                if _left_out:
+                    st.caption("Left out of this grid (their NAVs don't cover the same recent window, usually a "
+                               "discontinued plan or a very young fund): " + ", ".join(_left_out) + ".")
+            else:
+                st.caption("A correlation grid needs at least two funds with overlapping recent history in this "
+                           "window. Some of your picks look stale or too young; try a shorter lookback or swap "
+                           "in funds with current NAVs.")
 
             # ---- explainability
             insights = PL.explain(results)
@@ -1313,8 +1321,15 @@ with tab_advisor:
                                "mean real diversification.")
                     st.plotly_chart(C.correlation_heat(cm, height=min(420, 90 + 40 * len(cm))),
                                     width='stretch', config={"displayModeBar": False})
+                    _left_out = cm.attrs.get("excluded", [])
+                    if _left_out:
+                        st.caption("Left out (no overlapping recent NAVs in this window): "
+                                   + ", ".join(_left_out) + ".")
                     for line in PL.correlation_guidance(cm):
                         st.markdown(f"- {line}")
+                elif len(picks) >= 2:
+                    st.caption("Couldn't compute a correlation grid: your funds don't share enough overlapping "
+                               "recent history (often a stale or discontinued plan is the culprit).")
 
             # ---- head to head: their mix vs a suitable suggested mix, same window
             with st.spinner("Building a suitable portfolio to compare…"):
@@ -1371,8 +1386,14 @@ with tab_screener:
           "3 years for everyone. The Score is where the fund ranks among its own category peers, 0 to 100, "
           "leaning toward consistency and downside protection rather than chasing last year's winner. "
           "Click any column heading to sort.")
+    @st.cache_data(show_spinner=False, ttl=6 * 3600)
+    def _screener_table(_key: str) -> pd.DataFrame:
+        # cached so that typing in the search box doesn't recompute 500 funds;
+        # the key changes when data refreshes, so results are never stale
+        return SCR.build_screener(get_conn())
+
     with st.spinner("Measuring every fund as of a common date..."):
-        _scr = SCR.build_screener(conn)
+        _scr = _screener_table(f"{_data_to}|{len(codes)}")
     if _scr.empty:
         st.info("No funds with enough NAV history to screen yet. As more funds are added to the database they will "
                 "show up here automatically.")

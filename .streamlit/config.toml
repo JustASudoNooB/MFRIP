@@ -2,6 +2,12 @@
 base = "light"
 primaryColor = "#17150F"
 backgroundColor = "#F2EFE8"
-textColor = "#17150F"
 secondaryBackgroundColor = "#EBE6DB"
+textColor = "#17150F"
 font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

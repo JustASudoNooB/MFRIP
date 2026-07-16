@@ -51,6 +51,22 @@ def _cmd_fetch(args) -> int:
     return 0
 
 
+def _cmd_seed_universe(args) -> int:
+    from . import universe
+    conn = ingest.open_store()
+    n_schemes = conn.execute("SELECT COUNT(*) FROM schemes").fetchone()[0]
+    if n_schemes == 0:
+        print("Scheme master is empty; downloading it first (one time)...")
+        ingest.sync_scheme_master(conn)
+    out = universe.build_universe(conn, target=args.target, delay=args.delay)
+    conn.execute("VACUUM")
+    print(f"Done. {out['total_cached']} funds now cached "
+          f"({out['downloaded']} downloaded, {out['failed']} failed, "
+          f"{out['dropped_stale']} stale plans dropped).")
+    print("Next: commit the updated mfrip_data.db with GitHub Desktop and push.")
+    return 0
+
+
 def _cmd_snapshot(args) -> int:
     conn = ingest.open_store()
     nav = nav_store.load_nav(conn, int(args.code))
@@ -392,6 +408,14 @@ def build_parser() -> argparse.ArgumentParser:
     pf.add_argument("codes", nargs="+")
     pf.add_argument("--force", action="store_true")
     pf.set_defaults(func=_cmd_fetch)
+
+    pu = sub.add_parser("seed-universe",
+                        help="curate and download a broad fund universe for the screener")
+    pu.add_argument("--target", type=int, default=500,
+                    help="approximate number of funds to cache (default 500)")
+    pu.add_argument("--delay", type=float, default=0.15,
+                    help="seconds to wait between downloads (be kind to the free API)")
+    pu.set_defaults(func=_cmd_seed_universe)
 
     ps = sub.add_parser("snapshot", help="point-in-time metrics for a cached scheme")
     ps.add_argument("code")
