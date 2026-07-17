@@ -96,7 +96,18 @@ def simulate_sip(nav: pd.Series, monthly: float, years: float,
     bands = {int(p): np.percentile(paths, p, axis=0) for p in percentiles}
     terminal = paths[:, -1]
     terminal_pct = {int(p): float(np.percentile(terminal, p)) for p in percentiles}
+    med_terminal = float(np.percentile(terminal, 50.0))  # always available, even
+    # when a caller asks for a custom percentile set that excludes the median
     total_invested = float(monthly * months)
+
+    # a representative sample of individual futures for the spaghetti view:
+    # paths picked evenly across the sorted terminal outcomes, so the sample
+    # spans the whole range faithfully instead of cherry-picking
+    n_sample = min(100, n_sims)
+    order = np.argsort(terminal)
+    sample_idx = order[np.linspace(0, n_sims - 1, n_sample).round().astype(int)]
+    sample_paths = paths[sample_idx]                    # (n_sample, months+1)
+    sample_rank = np.linspace(0.0, 1.0, n_sample)       # outcome percentile of each
 
     out = {
         "months": months,
@@ -107,10 +118,12 @@ def simulate_sip(nav: pd.Series, monthly: float, years: float,
         "time_years": np.arange(months + 1) / 12.0,
         "invested": invested,
         "bands": bands,                 # percentile -> corpus array over time
+        "sample_paths": sample_paths,   # ~100 futures spanning the outcome range
+        "sample_rank": sample_rank,     # 0..1 outcome percentile per sample path
         "terminal": terminal,           # full terminal distribution
         "terminal_pct": terminal_pct,   # percentile -> terminal corpus
         "total_invested": total_invested,
-        "median_multiple": (terminal_pct[50] / total_invested) if total_invested else None,
+        "median_multiple": (med_terminal / total_invested) if total_invested else None,
         "ann_return": params["ann_return"],
         "ann_vol": params["ann_vol"],
         "n_months_history": params["n_months"],
@@ -119,7 +132,9 @@ def simulate_sip(nav: pd.Series, monthly: float, years: float,
         out["target"] = float(target)
         out["prob_target"] = float(np.mean(terminal >= target))
         # first year where the median path crosses the target (or None)
-        med = bands[50]
+        med = bands.get(50)
+        if med is None:
+            med = np.percentile(paths, 50.0, axis=0)
         hit = np.where(med >= target)[0]
         out["median_hits_year"] = float(hit[0] / 12.0) if len(hit) else None
     return out

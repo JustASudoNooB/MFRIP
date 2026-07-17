@@ -26,7 +26,7 @@ def _base(fig, height=340, ytitle=""):
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor=BG, plot_bgcolor=BG,
-        font=dict(color=TEXT, size=12, family="Inter, Segoe UI, sans-serif"),
+        font=dict(color=TEXT, size=12, family="Manrope, Inter, Segoe UI, sans-serif"),
         margin=dict(l=8, r=10, t=10, b=8), height=height,
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0,
@@ -171,30 +171,53 @@ def validation_scatter(df, ycol: str, ylabel: str, rho=None, height=340,
 
 def montecarlo_fan(sim: dict, height=360):
     """Probability fan of a SIP's future corpus from Monte Carlo simulation.
-    Shaded 10th-90th and 25th-75th percentile bands, a median line, the dotted
-    'you invest' line, and an optional goal line."""
+
+    Colour language matches the summary tiles: the unlucky 10th percentile
+    edge is red, the lucky 90th is green, the likeliest half (25th-75th) and
+    the median are amber, "you invest" is a muted dotted line, and the goal
+    (if set) is a green dashed line."""
     import plotly.graph_objects as go
     x = sim["time_years"]
     b = sim["bands"]
-    AMBER_LO = "rgba(217,115,13,0.12)"
-    AMBER_MID = "rgba(217,115,13,0.24)"
-    EDGE = "rgba(217,115,13,0.45)"
+    BAND_LO = "rgba(217,115,13,0.10)"
+    BAND_MID = "rgba(217,115,13,0.26)"
     fig = go.Figure()
-    # 10th-90th band (lower boundary first, then fill up to it)
-    fig.add_trace(go.Scatter(x=x, y=b[10], mode="lines", name="10th percentile",
-        line=dict(width=0.8, color=EDGE), hovertemplate="10th ₹%{y:,.0f}<extra></extra>"))
-    fig.add_trace(go.Scatter(x=x, y=b[90], mode="lines", name="90th percentile",
-        line=dict(width=0.8, color=EDGE), fill="tonexty", fillcolor=AMBER_LO,
+    # individual simulated journeys (spaghetti), coloured by how each ended:
+    # bottom third red, middle third muted amber, top third green. Drawn as one
+    # None-separated trace per tercile so hundreds of lines stay fast.
+    sp = sim.get("sample_paths")
+    if sp is not None and len(sp):
+        rank = sim.get("sample_rank")
+        if rank is None:
+            rank = np.linspace(0.0, 1.0, len(sp))
+        groups = [
+            ("Unlucky journeys", rank < 1 / 3, "rgba(194,69,45,0.28)"),
+            ("Middling journeys", (rank >= 1 / 3) & (rank < 2 / 3), "rgba(122,114,100,0.25)"),
+            ("Lucky journeys", rank >= 2 / 3, "rgba(20,122,82,0.28)"),
+        ]
+        for gname, mask, colour in groups:
+            xs, ys = [], []
+            for row in sp[mask]:
+                xs.extend(list(x) + [None])
+                ys.extend(list(row) + [None])
+            if ys:
+                fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", name=gname,
+                    line=dict(width=1, color=colour), hoverinfo="skip"))
+    # 10th-90th envelope: red lower edge, green upper edge, light amber fill
+    fig.add_trace(go.Scatter(x=x, y=b[10], mode="lines", name="Unlucky · 10th pct",
+        line=dict(width=1.4, color=RED), hovertemplate="10th ₹%{y:,.0f}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=b[90], mode="lines", name="Lucky · 90th pct",
+        line=dict(width=1.4, color=GREEN), fill="tonexty", fillcolor=BAND_LO,
         hovertemplate="90th ₹%{y:,.0f}<extra></extra>"))
-    # 25th-75th band (drawn on top, more opaque); boundaries hidden from hover
+    # 25th-75th likeliest half, deeper amber wash
     fig.add_trace(go.Scatter(x=x, y=b[25], mode="lines", line=dict(width=0, color="rgba(0,0,0,0)"),
         showlegend=False, hoverinfo="skip"))
-    fig.add_trace(go.Scatter(x=x, y=b[75], mode="lines", name="25th-75th (likeliest half)",
-        line=dict(width=0, color="rgba(0,0,0,0)"), fill="tonexty", fillcolor=AMBER_MID,
+    fig.add_trace(go.Scatter(x=x, y=b[75], mode="lines", name="Likeliest half · 25th-75th",
+        line=dict(width=0, color="rgba(0,0,0,0)"), fill="tonexty", fillcolor=BAND_MID,
         hoverinfo="skip"))
     # median
-    fig.add_trace(go.Scatter(x=x, y=b[50], mode="lines", name="Median outcome",
-        line=dict(color=AMBER, width=2.6), hovertemplate="Median ₹%{y:,.0f}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=b[50], mode="lines", name="Typical · median",
+        line=dict(color=AMBER, width=2.8), hovertemplate="Median ₹%{y:,.0f}<extra></extra>"))
     # amount invested
     fig.add_trace(go.Scatter(x=x, y=sim["invested"], mode="lines", name="You invest",
         line=dict(color=MUTED, width=1.4, dash="dot"),

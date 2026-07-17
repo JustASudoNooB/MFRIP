@@ -160,3 +160,80 @@ def test_calendar_year_full_year_value():
     cy = calendar_year_returns(pd.Series(vals, index=idx))
     got = {y: r for y, r, p in cy}
     assert got[2021] == pytest.approx(1.0, rel=1e-6)     # +100%
+
+
+def test_required_monthly_high_confidence_works_and_costs_more():
+    # Regression: confidence=0.75 asks the simulator for the 25th percentile
+    # only; the median field must still work (this used to KeyError on 50).
+    nav = _random_nav(seed=12)
+    m50 = MC.required_monthly_for_confidence(nav, 1_000_000, 10, confidence=0.50, seed=5)
+    m75 = MC.required_monthly_for_confidence(nav, 1_000_000, 10, confidence=0.75, seed=5)
+    assert m50 is not None and m75 is not None
+    assert m75 > m50                      # higher confidence must cost more per month
+
+
+def test_custom_percentiles_still_report_median():
+    nav = _random_nav(seed=13)
+    sim = MC.simulate_sip(nav, 5_000, 8, n_sims=500, seed=3,
+                          target=1_000.0, percentiles=(25,))
+    assert sim["median_multiple"] is not None and sim["median_multiple"] > 0
+    assert sim["median_hits_year"] is not None   # bands.get(50) fallback path
+    assert 25 in sim["terminal_pct"]
+
+
+def test_custom_percentiles_never_break_median_stats():
+    # Regression: required_monthly_for_confidence asks for a single custom
+    # percentile (e.g. 25th for 75% confidence); the simulator must still
+    # produce its median-based summary stats instead of raising KeyError.
+    nav = _random_nav(seed=12)
+    sim = MC.simulate_sip(nav, 5_000, 10, n_sims=800, seed=12,
+                          percentiles=(25,), target=1_000_000)
+    assert sim["median_multiple"] is not None and sim["median_multiple"] > 0
+    assert "median_hits_year" in sim            # computed even without a 50th band
+    assert 25 in sim["terminal_pct"] and 50 not in sim["terminal_pct"]
+
+
+def test_required_monthly_75_percent_confidence():
+    nav = _random_nav(seed=13)
+    m50 = MC.required_monthly_for_confidence(nav, 2_000_000, 10, 0.50, seed=13)
+    m75 = MC.required_monthly_for_confidence(nav, 2_000_000, 10, 0.75, seed=13)
+    assert m50 and m75 and m75 >= m50           # higher confidence costs more
+
+
+def test_sample_paths_span_outcome_range():
+    nav = _random_nav(seed=14)
+    sim = MC.simulate_sip(nav, 5_000, 10, n_sims=2000, seed=14)
+    sp = sim["sample_paths"]
+    assert sp.shape == (100, sim["months"] + 1)
+    # deterministic with the seed
+    sim2 = MC.simulate_sip(nav, 5_000, 10, n_sims=2000, seed=14)
+    assert (sp == sim2["sample_paths"]).all()
+    # sampled evenly across outcomes: first ends at the worst, last at the best
+    finals = sp[:, -1]
+    assert finals[0] == sim["terminal"].min()
+    assert finals[-1] == sim["terminal"].max()
+    assert (np.diff(finals) >= 0).all()          # ordered worst to best
+    assert (sp[:, 0] == 0).all()                 # every future starts at zero
+
+
+def test_sample_paths_span_the_outcome_range():
+    nav = _random_nav(seed=14)
+    sim = MC.simulate_sip(nav, 5_000, 10, n_sims=2000, seed=14)
+    sp, rank = sim["sample_paths"], sim["sample_rank"]
+    assert sp.shape == (100, sim["months"] + 1)
+    assert rank[0] == 0.0 and rank[-1] == 1.0
+    # sample spans the whole distribution, from unluckiest to luckiest future
+    assert sp[:, -1].min() == sim["terminal"].min()
+    assert sp[:, -1].max() == sim["terminal"].max()
+    # and outcome-sorted, so rank really is the outcome percentile
+    assert (np.diff(sp[:, -1]) >= 0).all()
+
+
+def test_fan_chart_draws_coloured_journeys():
+    from mfrip.webapp import charts as C
+    nav = _random_nav(seed=15)
+    sim = MC.simulate_sip(nav, 5_000, 10, n_sims=1000, seed=15)
+    h = C.montecarlo_fan(sim).to_html(include_plotlyjs=False)
+    for label in ("Unlucky journeys", "Middling journeys", "Lucky journeys"):
+        assert label in h
+    assert "rgba(194,69,45" in h and "rgba(20,122,82" in h   # red + green journey inks

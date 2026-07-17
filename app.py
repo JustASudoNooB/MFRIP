@@ -53,7 +53,7 @@ WINDOWS = {"6 months": 0.5, "1 year": 1.0, "3 years": 3.0, "5 years": 5.0, "Max"
 # Editorial design-studio skin: warm paper, ink type, hand-drawn accents.
 st.markdown("""
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
   #MainMenu, footer, header {visibility:hidden;}
   /* self-contained canvas: the light theme must hold even if config.toml is absent */
   .stApp {background:#F2EFE8 !important; color:#17150F;}
@@ -63,8 +63,8 @@ st.markdown("""
   div[data-testid="stExpander"] p, .stApp label p, .stMarkdown p {color:#17150F;}
   .stApp [data-testid="stCaptionContainer"] p {color:#6B6455; font-size:13px; line-height:1.55;}
   .block-container {padding-top:1.0rem; padding-bottom:2.5rem; max-width:1180px;}
-  html, body, [class*="css"] {font-family:'Inter','Segoe UI',sans-serif; color:#17150F;}
-  h1,h2,h3,h4 {font-family:'Space Grotesk','Inter',sans-serif !important;
+  html, body, [class*="css"] {font-family:'Manrope','Inter','Segoe UI',sans-serif; color:#17150F;}
+  h1,h2,h3,h4 {font-family:'Sora','Manrope',sans-serif !important;
                letter-spacing:-0.01em; color:#17150F !important;}
   h2,h3 {font-size:16px !important; font-weight:650;}
   /* masthead: bare wordmark on paper, thin ink rule ending in a wave */
@@ -74,9 +74,9 @@ st.markdown("""
   .mf-head::after {content:""; position:absolute; right:0; bottom:-8px;
       width:72px; height:14px; background-repeat:no-repeat;
       background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='14' viewBox='0 0 72 14'%3E%3Cpath d='M2 8 Q8 2 14 8 T26 8 T38 8 T50 8 T62 8 T74 8' fill='none' stroke='%2317150F' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");}
-  .mf-tag {background:none; color:#17150F; font-family:'Space Grotesk',sans-serif;
+  .mf-tag {background:none; color:#17150F; font-family:'Sora',sans-serif;
            font-weight:800; font-size:17px; letter-spacing:.14em; padding:0;}
-  .mf-title {color:#17150F; font-family:'Space Grotesk',sans-serif;
+  .mf-title {color:#17150F; font-family:'Sora',sans-serif;
              font-size:17px; font-weight:600;}
   .mf-sub {color:#6B6455; font-size:12px;}
   /* hero */
@@ -86,7 +86,7 @@ st.markdown("""
       background:radial-gradient(closest-side, rgba(245,184,160,.38), rgba(201,184,240,.30) 55%, rgba(242,239,232,0) 75%);
       filter:blur(38px);}
   .mf-hero h1 {position:relative; z-index:1; margin:0 0 12px 0;
-      font-family:'Space Grotesk',sans-serif; font-weight:700; color:#17150F;
+      font-family:'Sora',sans-serif; font-weight:700; color:#17150F;
       font-size:clamp(34px,5vw,56px); line-height:1.08; letter-spacing:-0.015em;}
   .mf-hero .squig {position:relative; white-space:nowrap;}
   .mf-hero .squig::after {content:""; position:absolute; left:0; right:0; bottom:-7px; height:10px;
@@ -102,7 +102,7 @@ st.markdown("""
   /* ink statement band */
   .mf-band {position:relative; background:#17150F; color:#F2EFE8;
       border-radius:16px; padding:30px 34px; margin:8px 0 18px 0; overflow:hidden;}
-  .mf-band p {position:relative; z-index:1; font-family:'Space Grotesk',sans-serif;
+  .mf-band p {position:relative; z-index:1; font-family:'Sora',sans-serif;
       font-size:clamp(16px,2vw,21px); line-height:1.65; margin:0; color:#F2EFE8;}
   .mf-band::before, .mf-band::after {content:""; position:absolute; width:220px; height:60px;
       opacity:.14; background-repeat:repeat-x;
@@ -709,6 +709,10 @@ with tab_explore:
                             learn(f"To reach ₹{target:,.0f} on this fund's history, you'd invest roughly "
                                   f"₹{need50:,.0f}/month for a 50/50 chance, or about ₹{need75:,.0f}/month to make "
                                   "it likely (around 75%). Higher confidence simply costs more per month.")
+                    st.caption("Each thin line is one complete simulated future, from first instalment to the "
+                               "end: a sample of 100 of the 5,000 futures simulated, picked across the whole "
+                               "range. Red lines ended unlucky, green ended lucky. Notice how similar they all "
+                               "look in the early years; the spread is a later-years story.")
                     st.caption("Drawn from this fund's past monthly returns, assuming the future resembles the past "
                                "(it may not). Each month is simulated independently, so real multi-year streaks can "
                                "make the true spread a little wider. Ignores costs, taxes, and any change in the "
