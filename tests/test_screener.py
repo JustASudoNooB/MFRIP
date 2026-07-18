@@ -126,3 +126,31 @@ def test_empty_db_returns_empty_frame():
     conn = DB.connect(":memory:")
     DB.init_db(conn)
     assert SCR.build_screener(conn).empty
+
+
+def test_screener_alpha_beta_benchmark_self_control():
+    # A category's own benchmark fund must show beta ~1.00 and alpha ~0.0
+    conn = DB.connect(":memory:"); DB.init_db(conn)
+    import datetime as dt
+    end = (dt.date.today() - dt.timedelta(days=1)).isoformat()
+    dates = pd.bdate_range("2019-01-02", end)
+    rng = np.random.default_rng(9)
+    bench = pd.Series(100 * np.cumprod(1 + rng.normal(0.0005, 0.009, len(dates))), index=dates)
+    _add_fund(conn, 120716, "UTI Nifty 50 Index Fund - Direct Plan - Growth", bench)
+    for i, seed in enumerate((21, 22, 23)):
+        _add_fund(conn, 200 + i, f"Active Large Cap Fund {i+1} - Direct Growth",
+                  _walk(dates, 0.00055, 0.01, seed))
+    conn.commit()
+    df = SCR.build_screener(conn).set_index("Fund")
+    row = df.loc["UTI Nifty 50 Index Fund - Direct Plan - Growth"]
+    assert row["Beta 3Y"] == 1.0
+    assert abs(row["Alpha 3Y"]) < 0.05          # zero to rounding
+    # active funds get real numbers too
+    assert df.loc["Active Large Cap Fund 1 - Direct Growth", "Beta 3Y"] is not None
+
+
+def test_one_line_read_is_templated_and_honest():
+    from mfrip.webapp.verdict import one_line_read
+    r = one_line_read(alpha=0.031, beta=1.2, up_capture=1.0, down_capture=1.2)
+    assert "3%" in r and "beta 1.20" in r and "not a promise" in r
+    assert one_line_read().startswith("Not enough")

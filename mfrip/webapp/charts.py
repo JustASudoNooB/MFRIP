@@ -319,3 +319,56 @@ def rolling_range_chart(rows: list[dict], height=None):
     fig.update_yaxes(title="")
     fig.update_layout(hovermode="closest")
     return fig
+
+
+def rolling_alpha_chart(res: pd.DataFrame, height=300):
+    """Rolling annualised alpha over time: is outperformance a habit or a fluke?
+    Green above zero, red below, drawn as one line with a zero reference."""
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    fig.add_hline(y=0, line=dict(color=MUTED, width=1, dash="dot"))
+    fig.add_trace(go.Scatter(
+        x=res.index, y=res["alpha"] * 100.0, mode="lines", name="Rolling 3y alpha",
+        line=dict(color=AMBER, width=2.2),
+        hovertemplate="%{x|%b %Y}: %{y:+.1f}%/yr<extra></extra>"))
+    _base(fig, height, ytitle="")
+    fig.update_yaxes(ticksuffix="%", zeroline=False)
+    return fig
+
+
+def swp_fan(sim: dict, height=360):
+    """Corpus depletion fan for a withdrawal plan, same colour language as the
+    SIP fan: red unlucky edge, green lucky edge, amber median, journey threads."""
+    import plotly.graph_objects as go
+    x = sim["time_years"]
+    b = sim["bands"]
+    fig = go.Figure()
+    sp = sim.get("sample_paths")
+    if sp is not None and len(sp):
+        rank = sim.get("sample_rank")
+        groups = [
+            ("Unlucky journeys", rank < 1 / 3, "rgba(194,69,45,0.28)"),
+            ("Middling journeys", (rank >= 1 / 3) & (rank < 2 / 3), "rgba(122,114,100,0.25)"),
+            ("Lucky journeys", rank >= 2 / 3, "rgba(20,122,82,0.28)"),
+        ]
+        for gname, mask, colour in groups:
+            xs, ys = [], []
+            for row in sp[mask]:
+                xs.extend(list(x) + [None]); ys.extend(list(row) + [None])
+            if ys:
+                fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", name=gname,
+                    line=dict(width=1, color=colour), hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=x, y=b[10], mode="lines", name="Unlucky · 10th pct",
+        line=dict(width=1.4, color=RED), hovertemplate="10th ₹%{y:,.0f}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=b[90], mode="lines", name="Lucky · 90th pct",
+        line=dict(width=1.4, color=GREEN), fill="tonexty",
+        fillcolor="rgba(217,115,13,0.10)", hovertemplate="90th ₹%{y:,.0f}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=b[50], mode="lines", name="Typical · median",
+        line=dict(color=AMBER, width=2.8), hovertemplate="Median ₹%{y:,.0f}<extra></extra>"))
+    fig.add_hline(y=0, line=dict(color=RED, width=1.2, dash="dash"),
+                  annotation_text="money runs out", annotation_position="bottom right",
+                  annotation_font_color=RED)
+    _base(fig, height, ytitle="")
+    fig.update_yaxes(tickprefix="₹", tickformat=",.0f")
+    fig.update_xaxes(title="years", ticksuffix="y")
+    return fig

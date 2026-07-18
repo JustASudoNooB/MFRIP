@@ -35,6 +35,8 @@ from mfrip.advisor import glossary as GLOSS
 from mfrip.metrics import rolling as ROLL
 from mfrip.metrics import returns as RET
 from mfrip.metrics import capture as CAP
+from mfrip.metrics import relative as REL
+from mfrip.webapp.verdict import one_line_read
 from mfrip.metrics import sip as SIP
 from mfrip.metrics import montecarlo as MC
 from mfrip import validation as VALID
@@ -614,6 +616,38 @@ with tab_explore:
                         ("Up-capture", f"{uc:.0%}", ccol),
                         ("Down-capture", f"{dc:.0%}", dcol),
                     ], cols=2), unsafe_allow_html=True)
+
+                # ---- alpha & beta (vs the category index)
+                _fr = RET.period_returns(nav, 12)
+                _br = RET.period_returns(bench_nav, 12)
+                _joined = pd.DataFrame({"f": _fr, "b": _br}).dropna().tail(36)
+                if len(_joined) >= 24:
+                    _beta, _alpha = REL.beta_alpha(_joined["f"], _joined["b"],
+                                                   DEFAULT_CONFIG.rf_annual, 12)
+                    st.subheader(f"Alpha & beta vs {bench_label} · last 3 years")
+                    learn("Beta is how hard the fund swings when its benchmark moves: 1.0 means in step, "
+                          "above 1 means amplified, below 1 means damped. Alpha is the extra return per year "
+                          "beyond what its beta would predict, after the risk-free rate: the closest thing to "
+                          "a 'manager skill' number, though luck plays a part too.")
+                    _acol = GREEN if _alpha > 0.005 else RED if _alpha < -0.005 else NEUTRAL
+                    st.markdown(tiles_html([
+                        ("Beta", f"{_beta:.2f}", NEUTRAL),
+                        ("Alpha (annualised)", f"{_alpha:+.1%}", _acol),
+                    ], cols=2), unsafe_allow_html=True)
+                    st.markdown("*" + one_line_read(alpha=_alpha, beta=_beta,
+                                                    up_capture=uc, down_capture=dc) + "*")
+                    _roll = REL.rolling_beta_alpha(nav, bench_nav, 3.0,
+                                                   DEFAULT_CONFIG.rf_annual, 12)
+                    if len(_roll) >= 12:
+                        st.markdown("**Rolling 3-year alpha** · is the outperformance a habit?")
+                        learn("One alpha number can hide a lot: a single great year can carry a decade. This "
+                              "chart recomputes alpha over every rolling 3-year window, so you can see whether "
+                              "beating the benchmark is consistent behaviour or a one-off stretch.")
+                        st.plotly_chart(C.rolling_alpha_chart(_roll), width='stretch',
+                                        config={"displayModeBar": False})
+                        _pos = float((_roll["alpha"] > 0).mean())
+                        st.caption(f"Alpha was positive in {_pos:.0%} of all rolling 3-year windows. "
+                                   "Past habit, not a promise.")
                     if uc < 0.6 and dc < 0.6:
                         read = (f"This fund only loosely tracks {bench_label}. It caught **{uc:.0%}** of "
                                 f"its gains and **{dc:.0%}** of its losses. Typical of a debt, gold, hybrid, or "
@@ -644,6 +678,9 @@ with tab_explore:
                 sc = st.columns(2)
                 monthly = sc[0].number_input("Monthly SIP (₹)", 500, 1000000, 10000, step=500, key="exp_sip")
                 goal_years = sc[1].number_input("Goal horizon (years)", 1, 40, 15, key="exp_goalyr")
+                step_up_pct = st.number_input("Annual SIP step-up (%)", 0, 25, 0, key="exp_stepup",
+                                              help="Raise your monthly amount by this much every year, the way "
+                                                   "many people do as income grows. 0 keeps it flat.")
                 sres = SIP.sip_xirr(nav, float(monthly), start, end)
                 if sres and sres["xirr"] is not None:
                     st.markdown(tiles_html([
@@ -670,7 +707,12 @@ with tab_explore:
                 try:
                     sim = MC.simulate_sip(nav, float(monthly), float(goal_years), n_sims=5000,
                                           method=method_key,
-                                          target=(float(target) if target > 0 else None), seed=42)
+                                          target=(float(target) if target > 0 else None), seed=42,
+                                          step_up=step_up_pct / 100.0)
+                    if step_up_pct:
+                        st.caption(f"With a {step_up_pct}% yearly step-up, your instalment grows from "
+                                   f"₹{monthly:,.0f} now to ₹{monthly * (1 + step_up_pct / 100.0) ** (goal_years - 1):,.0f} "
+                                   "in the final year; the totals below include that.")
                     learn("This is a **Monte Carlo simulation**. We took this fund's own history (about "
                           f"{sim['ann_return']:.0%}/year return with {sim['ann_vol']:.0%}/year swings) and played "
                           "out 5,000 possible futures for your SIP. The shaded fan is the range you might land in; "
@@ -719,6 +761,38 @@ with tab_explore:
                                "fund's strategy. Educational, not a guarantee.")
                 except ValueError as e:
                     st.info(f"Goal simulation needs a longer history for this fund. ({e})")
+            # ---- withdrawal planner (SWP)
+            with st.expander("💸  Withdrawal planner · will the money last?"):
+                learn("The reverse of a SIP: you have a corpus and draw a monthly amount from it. Each month "
+                      "the money grows (or falls) with the fund, then your withdrawal comes out. We simulate "
+                      "5,000 futures and ask one blunt question: does the corpus survive your horizon?")
+                wc = st.columns(3)
+                swp_corpus = wc[0].number_input("Corpus today (₹)", 100_000, 1_000_000_000,
+                                                5_000_000, step=100_000, key="exp_swp_c")
+                swp_monthly = wc[1].number_input("Withdraw per month (₹)", 1_000, 10_000_000,
+                                                 40_000, step=1_000, key="exp_swp_w")
+                swp_years = wc[2].number_input("For how many years", 1, 50, 25, key="exp_swp_y")
+                try:
+                    _swp = MC.simulate_swp(nav, float(swp_corpus), float(swp_monthly),
+                                           float(swp_years), n_sims=5000, seed=42)
+                    st.plotly_chart(C.swp_fan(_swp), width='stretch',
+                                    config={"displayModeBar": False})
+                    _sp = _swp["survival_prob"]
+                    _scol = GREEN if _sp >= 0.85 else AMBER if _sp >= 0.6 else RED
+                    st.markdown(tiles_html([
+                        ("Survives the full horizon", f"{_sp:.0%}", _scol),
+                        ("Typically lasts", f"{_swp['median_lasts_years']:.1f} yrs"
+                         if _swp['median_lasts_years'] < swp_years else f"{swp_years:.0f}+ yrs", NEUTRAL),
+                        ("Typical corpus at the end", f"₹{_swp['median_end_corpus']:,.0f}", NEUTRAL),
+                    ], cols=3), unsafe_allow_html=True)
+                    _rate = swp_monthly * 12 / swp_corpus
+                    st.caption(f"You are drawing {_rate:.1%} of the corpus per year. Each thin line is one "
+                               "simulated future; once a line touches zero it stays there, because you cannot "
+                               "withdraw from an empty account. Ignores taxes and exit loads. Educational, "
+                               "not a guarantee.")
+                except ValueError as e:
+                    st.info(f"Withdrawal simulation needs a longer history for this fund. ({e})")
+
         except ValueError as e:
             st.error(str(e))
 

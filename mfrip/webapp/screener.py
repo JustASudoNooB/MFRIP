@@ -15,6 +15,11 @@ Methodology, stated plainly:
   15-year-old fund never lived through. Blank if under ~2.75y of history.
 - **vs Cat.** The fund's 3Y return minus its category's median 3Y, in
   percentage points, when the category has at least MIN_PEERS funds.
+- **Alpha / Beta (3Y).** Jensen's alpha and beta against the fund's own
+  category benchmark over the same trailing three years. Alpha is the
+  annualised return beyond what the fund's beta and the benchmark's move would
+  predict; beta is how hard the fund swings relative to that benchmark. Blank
+  when the category has no cached benchmark or overlap is too short.
 - **Score.** MFRIP's composite (consistency 38%, Sortino 25%, Sharpe 19%,
   drawdown resilience 18%), each factor expressed as a percentile rank within
   the category, so one outlier cannot squash everyone else's scores. Needs at
@@ -35,7 +40,9 @@ from ..advisor.ranking import rank_sleeve
 from ..config import Config, DEFAULT_CONFIG
 from ..metrics import returns as RET
 from ..metrics import risk as RISK
+from ..metrics.relative import beta_alpha
 from ..store.nav_store import load_nav
+from .benchmarks import resolve_benchmark
 from .data import available_funds
 
 SLEEVE_LABEL = {
@@ -96,6 +103,16 @@ def build_screener(conn: sqlite3.Connection, config: Config = DEFAULT_CONFIG) ->
         for fs in rank_sleeve(names, series, config):
             score[fs.code] = fs.composite
 
+    # one benchmark NAV per category, resolved once
+    bench_nav: dict[str, pd.Series] = {}
+    for sl in by_sleeve:
+        bcode, _blabel = resolve_benchmark(conn, sl)
+        if bcode:
+            bn = load_nav(conn, bcode)
+            if bn is not None and not bn.empty:
+                bench_nav[sl] = bn.dropna().sort_index()
+    risk_start = as_of - pd.DateOffset(days=round(RISK_YEARS * 365.25))
+
     rows = []
     for code, (name, nav) in navs.items():
         sl = infer_sleeve(name) or "other"
@@ -106,14 +123,26 @@ def build_screener(conn: sqlite3.Connection, config: Config = DEFAULT_CONFIG) ->
             r3 = _pctv(RET.trailing_cagr(nav, as_of, 3.0))
             r5 = _pctv(RET.trailing_cagr(nav, as_of, 5.0))
             vol, dd = _risk_3y(nav, as_of)
+            beta = alpha = None
+            bn = bench_nav.get(sl)
+            if bn is not None and (as_of - bn.index[-1]).days <= STALE_DAYS:
+                fr = RET.period_returns(nav.loc[risk_start:as_of], 12)
+                br = RET.period_returns(bn.loc[risk_start:as_of], 12)
+                joined = pd.DataFrame({"f": fr, "b": br}).dropna()
+                if len(joined) >= 24:
+                    b_, a_ = beta_alpha(joined["f"], joined["b"],
+                                        config.rf_annual, config.periods_per_year)
+                    beta, alpha = round(b_, 2), round(a_ * 100.0, 1)
         else:
-            r6 = r1 = r3 = r5 = vol = dd = None
+            r6 = r1 = r3 = r5 = vol = dd = beta = alpha = None
         rows.append({
             "Fund": name,
             "Category": SLEEVE_LABEL.get(sl, sl.title()),
             "Yrs": round((nav.index[-1] - nav.index[0]).days / 365.25, 1),
             "6M": r6, "1Y": r1, "3Y": r3, "5Y": r5,
             "vs Cat": None,   # filled below from category medians
+            "Alpha 3Y": alpha,
+            "Beta 3Y": beta,
             "Vol 3Y": vol,
             "DD 3Y": dd,
             "Score": round(score[code], 0) if code in score else None,
@@ -144,6 +173,10 @@ def style_screener(df: pd.DataFrame):
     fmt = {c: "{:+.1f}%" for c in RETURN_COLS if c in df.columns}
     if "vs Cat" in df.columns:
         fmt["vs Cat"] = "{:+.1f}pp"
+    if "Alpha 3Y" in df.columns:
+        fmt["Alpha 3Y"] = "{:+.1f}%"
+    if "Beta 3Y" in df.columns:
+        fmt["Beta 3Y"] = "{:.2f}"
     if "Vol 3Y" in df.columns:
         fmt["Vol 3Y"] = "{:.1f}%"
     if "DD 3Y" in df.columns:
@@ -159,10 +192,10 @@ def style_screener(df: pd.DataFrame):
         return f"color:{GREEN};font-weight:600" if v >= 0 else f"color:{RED};font-weight:600"
 
     sty = df.style.format(fmt, na_rep="—")
-    signed = [c for c in RETURN_COLS + ["vs Cat"] if c in df.columns]
+    signed = [c for c in RETURN_COLS + ["vs Cat", "Alpha 3Y"] if c in df.columns]
     if signed:
         sty = sty.map(_updown, subset=signed)
-    for quiet in ("Yrs", "Vol 3Y", "DD 3Y"):
+    for quiet in ("Yrs", "Beta 3Y", "Vol 3Y", "DD 3Y"):
         if quiet in df.columns:
             sty = sty.map(lambda _v: f"color:{MUTED}", subset=[quiet])
     if "Score" in df.columns:

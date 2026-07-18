@@ -237,3 +237,59 @@ def test_fan_chart_draws_coloured_journeys():
     for label in ("Unlucky journeys", "Middling journeys", "Lucky journeys"):
         assert label in h
     assert "rgba(194,69,45" in h and "rgba(20,122,82" in h   # red + green journey inks
+
+
+# ---- SIP step-up
+def test_step_up_zero_vol_matches_deterministic():
+    # constant 1%/month fund, 10% annual step-up: the simulated median must
+    # equal an explicit deterministic month-by-month calculation exactly
+    nav = _const_growth_nav(0.01, 60)
+    monthly, years, su = 10_000.0, 3.0, 0.10
+    sim = MC.simulate_sip(nav, monthly, years, n_sims=200, seed=1, step_up=su)
+    corpus, expect_invested = 0.0, 0.0
+    for t in range(36):
+        inst = monthly * (1 + su) ** (t // 12)
+        corpus = (corpus + inst) * 1.01
+        expect_invested += inst
+    assert sim["terminal_pct"][50] == pytest.approx(corpus, rel=1e-9)
+    assert sim["total_invested"] == pytest.approx(expect_invested, rel=1e-12)
+
+
+def test_step_up_grows_corpus_and_invested():
+    nav = _random_nav(seed=16)
+    flat = MC.simulate_sip(nav, 10_000, 10, n_sims=800, seed=16)
+    step = MC.simulate_sip(nav, 10_000, 10, n_sims=800, seed=16, step_up=0.10)
+    assert step["total_invested"] > flat["total_invested"]
+    assert step["terminal_pct"][50] > flat["terminal_pct"][50]
+
+
+# ---- SWP withdrawal planner
+def test_swp_zero_growth_depletes_exactly():
+    # flat NAV: a 10L corpus at 10k/month lasts exactly 100 months
+    idx = pd.date_range("2015-01-31", periods=60, freq="ME")
+    nav = pd.Series(100.0, index=idx)
+    sim = MC.simulate_swp(nav, 1_000_000, 10_000, years=12, n_sims=100, seed=2)
+    assert sim["median_lasts_years"] == pytest.approx(100 / 12, rel=1e-9)
+    assert sim["survival_prob"] == 0.0                     # 12y horizon > 100 months
+    short = MC.simulate_swp(nav, 1_000_000, 10_000, years=8, n_sims=100, seed=2)
+    assert short["survival_prob"] == 1.0                   # 96 months < 100
+
+
+def test_swp_survival_falls_as_withdrawal_rises():
+    nav = _random_nav(seed=17)
+    lo = MC.simulate_swp(nav, 5_000_000, 20_000, years=25, n_sims=1500, seed=17)
+    hi = MC.simulate_swp(nav, 5_000_000, 60_000, years=25, n_sims=1500, seed=17)
+    assert lo["survival_prob"] >= hi["survival_prob"]
+    assert 0.0 <= hi["survival_prob"] <= 1.0
+    # paths never go negative: you cannot withdraw from an empty account
+    assert (lo["sample_paths"] >= 0).all()
+
+
+# ---- rolling alpha
+def test_rolling_beta_alpha_self_is_zero_alpha_unit_beta():
+    from mfrip.metrics.relative import rolling_beta_alpha
+    nav = _random_nav(seed=18, n_months=120)
+    res = rolling_beta_alpha(nav, nav, window_years=3.0)
+    assert len(res) > 20
+    assert np.allclose(res["beta"], 1.0, atol=1e-9)
+    assert np.allclose(res["alpha"], 0.0, atol=1e-9)

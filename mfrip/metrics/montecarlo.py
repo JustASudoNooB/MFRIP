@@ -55,7 +55,7 @@ def historical_params(nav: pd.Series) -> dict | None:
 def simulate_sip(nav: pd.Series, monthly: float, years: float,
                  n_sims: int = 5000, method: str = "bootstrap",
                  target: float | None = None, seed: int | None = 42,
-                 percentiles=DEFAULT_PERCENTILES) -> dict:
+                 percentiles=DEFAULT_PERCENTILES, step_up: float = 0.0) -> dict:
     """Simulate a monthly SIP forward and summarise the distribution of outcomes.
 
     Returns a dict with the percentile bands over time, the terminal
@@ -84,21 +84,23 @@ def simulate_sip(nav: pd.Series, monthly: float, years: float,
     else:
         raise ValueError("method must be 'bootstrap' or 'normal'")
 
-    # annuity-due SIP recursion, vectorised across simulations
+    # annuity-due SIP recursion, vectorised across simulations; the instalment
+    # steps up once every 12 months when `step_up` is set (e.g. 0.10 = +10%/yr)
+    instalments = monthly * (1.0 + step_up) ** (np.arange(months) // 12)
     paths = np.empty((n_sims, months + 1), dtype=float)
     paths[:, 0] = 0.0
     corpus = np.zeros(n_sims, dtype=float)
     for t in range(months):
-        corpus = (corpus + monthly) * (1.0 + R[:, t])
+        corpus = (corpus + instalments[t]) * (1.0 + R[:, t])
         paths[:, t + 1] = corpus
 
-    invested = monthly * np.arange(months + 1, dtype=float)
+    invested = np.concatenate([[0.0], np.cumsum(instalments)])
     bands = {int(p): np.percentile(paths, p, axis=0) for p in percentiles}
     terminal = paths[:, -1]
     terminal_pct = {int(p): float(np.percentile(terminal, p)) for p in percentiles}
     med_terminal = float(np.percentile(terminal, 50.0))  # always available, even
     # when a caller asks for a custom percentile set that excludes the median
-    total_invested = float(monthly * months)
+    total_invested = float(instalments.sum())
 
     # a representative sample of individual futures for the spaghetti view:
     # paths picked evenly across the sorted terminal outcomes, so the sample
@@ -113,6 +115,7 @@ def simulate_sip(nav: pd.Series, monthly: float, years: float,
         "months": months,
         "years": float(years),
         "monthly": float(monthly),
+        "step_up": float(step_up),
         "n_sims": int(n_sims),
         "method": method,
         "time_years": np.arange(months + 1) / 12.0,
@@ -158,3 +161,71 @@ def required_monthly_for_confidence(nav: pd.Series, target: float, years: float,
     if corpus_per_rupee <= 0:
         return None
     return float(target / corpus_per_rupee)
+
+
+def simulate_swp(nav: pd.Series, corpus: float, monthly_withdrawal: float,
+                 years: float, n_sims: int = 5000, method: str = "bootstrap",
+                 seed: int | None = 42) -> dict:
+    """Simulate a Systematic Withdrawal Plan: does the corpus survive?
+
+    Each month the corpus grows by a simulated return, then the withdrawal is
+    taken out; once a path hits zero it stays at zero (you cannot withdraw
+    from an empty account). Reports the survival probability over the horizon,
+    percentile bands of the remaining corpus, and how long the money typically
+    lasts.
+    """
+    if corpus <= 0 or monthly_withdrawal <= 0:
+        raise ValueError("Corpus and monthly withdrawal must be positive.")
+    params = historical_params(nav)
+    if params is None:
+        raise ValueError(
+            f"Need at least {MIN_MONTHS} months of history to simulate; "
+            "this fund has too little.")
+    months = int(round(years * 12))
+    if months < 1:
+        raise ValueError("Horizon must be at least one month.")
+
+    r = params["returns"]
+    rng = np.random.default_rng(seed)
+    if method == "bootstrap":
+        R = rng.choice(r, size=(n_sims, months), replace=True)
+    elif method == "normal":
+        logr = np.log1p(r)
+        R = np.expm1(rng.normal(float(logr.mean()), float(logr.std(ddof=1)),
+                                size=(n_sims, months)))
+    else:
+        raise ValueError("method must be 'bootstrap' or 'normal'")
+
+    paths = np.empty((n_sims, months + 1), dtype=float)
+    paths[:, 0] = corpus
+    bal = np.full(n_sims, float(corpus))
+    for t in range(months):
+        bal = np.maximum(bal * (1.0 + R[:, t]) - monthly_withdrawal, 0.0)
+        paths[:, t + 1] = bal
+
+    terminal = paths[:, -1]
+    alive = paths > 0
+    # months each path lasted (first zero month, or full horizon)
+    lasts = np.where(alive.all(axis=1), months,
+                     np.argmin(alive, axis=1))          # index of first zero
+    bands = {p: np.percentile(paths, p, axis=0) for p in (10, 25, 50, 75, 90)}
+
+    n_sample = min(100, n_sims)
+    order = np.argsort(terminal)
+    idx = order[np.linspace(0, n_sims - 1, n_sample).round().astype(int)]
+
+    return {
+        "months": months,
+        "years": float(years),
+        "corpus": float(corpus),
+        "withdrawal": float(monthly_withdrawal),
+        "time_years": np.arange(months + 1) / 12.0,
+        "bands": bands,
+        "sample_paths": paths[idx],
+        "sample_rank": np.linspace(0.0, 1.0, n_sample),
+        "survival_prob": float(np.mean(terminal > 0)),
+        "median_end_corpus": float(np.percentile(terminal, 50)),
+        "median_lasts_years": float(np.percentile(lasts, 50)) / 12.0,
+        "ann_return": params["ann_return"],
+        "ann_vol": params["ann_vol"],
+    }

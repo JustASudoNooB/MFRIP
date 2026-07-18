@@ -81,3 +81,29 @@ def capture_ratios(fund_ret: pd.Series, bench_ret: pd.Series) -> tuple[float, fl
         return f_g / b_g if b_g != 0 else float("nan")
 
     return _cap(b > 0), _cap(b < 0)
+
+
+def rolling_beta_alpha(fund_nav: pd.Series, bench_nav: pd.Series,
+                       window_years: float = 3.0, rf_annual: float = 0.065,
+                       periods_per_year: int = 12) -> pd.DataFrame:
+    """Rolling beta and annualised alpha over every `window_years` window.
+
+    One row per window end (monthly step). Shows whether outperformance is a
+    consistent habit or a one-off stretch, which a single full-period alpha
+    hides. Empty frame when overlap is too short.
+    """
+    from .returns import period_returns
+
+    f = period_returns(fund_nav, periods_per_year)
+    b = period_returns(bench_nav, periods_per_year)
+    df = pd.DataFrame({"f": f, "b": b}).dropna()
+    w = int(round(window_years * periods_per_year))
+    if len(df) < w + 1:
+        return pd.DataFrame(columns=["beta", "alpha"])
+    out = []
+    for end in range(w, len(df) + 1):
+        chunk = df.iloc[end - w:end]
+        beta, alpha = beta_alpha(chunk["f"], chunk["b"], rf_annual, periods_per_year)
+        out.append((df.index[end - 1], beta, alpha))
+    res = pd.DataFrame(out, columns=["date", "beta", "alpha"]).set_index("date")
+    return res
