@@ -159,8 +159,7 @@ is documented, formula by formula, in [METHODOLOGY.md](METHODOLOGY.md).
 
 ## Author
 
-Built by **Akhand Raj**, a dual-degree student (M.Sc. Economics + B.E.
-Mechanical Engineering) at BITS Pilani Hyderabad, targeting quantitative risk
+Built by **Akhand Raj**, a dual-degree student at BITS Pilani Hyderabad, targeting quantitative risk
 and markets roles. Feedback and questions are welcome via
 [GitHub issues](../../issues).
 
