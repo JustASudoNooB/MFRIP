@@ -118,7 +118,7 @@ pip install pytest
 python -m pytest -q
 ```
 
-135 tests cover the financial math (including XIRR validated against a flat-NAV
+162 tests cover the financial math (including XIRR validated against a flat-NAV
 control and capture ratios against known aggressive/defensive cases), the
 suitability engine, point-in-time reconstruction, benchmark resolution, and the
 portfolio/leaderboard logic.
@@ -143,7 +143,7 @@ mfrip/
   recommend/              recommendation schema + YAML loader
   cli.py                  command-line tools
 recommendations/          advised plans (YAML)
-tests/                    135 tests
+tests/                    162 tests
 docs/screenshots/         README images
 ARCHITECTURE.md           system map and data flow
 METHODOLOGY.md            every formula and rule, stated plainly

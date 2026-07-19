@@ -76,6 +76,20 @@ of outcomes. It is forward-looking and uses real parameters, but it quantifies
 - **Outputs.** Percentile bands (10th / 25th / 50th / 75th / 90th) of the corpus over time form the fan; the terminal distribution gives the unlucky / typical / lucky corpus; and if a goal is set, the probability of reaching it is the fraction of simulations that finish at or above it. Because corpus is linear in the monthly amount for a fixed set of return paths, the "required SIP for a given confidence" is found by simulating once at ₹1/month and scaling.
 - **Honest framing.** Everything is labelled as a range of scenarios drawn from the past, assuming the future resembles it (which it may not). The 90th percentile is not a promise and the 10th is not a floor; costs, taxes, and strategy drift are excluded.
 
+## 6b. Post-tax outcomes
+
+The goal planner can restate every simulated outcome after Indian capital-gains
+tax, as if the whole corpus were redeemed at the horizon. Rules encoded (the
+Finance (No.2) Act 2024 regime): equity funds pay 12.5% on long-term gains
+above the Rs 1.25 lakh yearly exemption; debt funds pay the investor's slab
+rate on all gains; other funds (gold, international, hybrids) pay 12.5% beyond
+24 months and slab below. The tax is applied to each simulated path
+separately, so post-tax percentiles and the post-tax goal probability are
+honest distributional statements, not a haircut on an average. Stated
+simplifications, repeated on screen: all units treated as long-term, one
+exemption year, no surcharge or cess, and rules change. Educational, not tax
+advice.
+
 ## 7. Category-matched benchmarks
 
 Judging a mid-cap fund against the Nifty 50 lets the mid/small-cap premium
@@ -222,7 +236,7 @@ So MFRIP is a **transparent, rules-based suitability engine**. "Correct" means
 
 ## 14. Testing
 
-135 tests, including: the no-lookahead integrity test; XIRR against a flat-NAV
+162 tests, including: the no-lookahead integrity test; XIRR against a flat-NAV
 control; capture ratios against known aggressive/defensive funds; goal-projection
 monotonicity; suitability-engine constraints (e.g. an all-equity portfolio with
 no emergency fund must be blocked); category-benchmark resolution and fallback;

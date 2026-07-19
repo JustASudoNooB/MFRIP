@@ -36,6 +36,7 @@ from mfrip.metrics import rolling as ROLL
 from mfrip.metrics import returns as RET
 from mfrip.metrics import capture as CAP
 from mfrip.metrics import relative as REL
+from mfrip.metrics import tax as TAX
 from mfrip.webapp.verdict import one_line_read
 from mfrip.metrics import sip as SIP
 from mfrip.metrics import montecarlo as MC
@@ -730,6 +731,37 @@ with tab_explore:
                                f"₹{sim['terminal_pct'][50]:,.0f} ({sim['median_multiple']:.1f}x). But outcomes "
                                f"realistically range from ₹{sim['terminal_pct'][10]:,.0f} to "
                                f"₹{sim['terminal_pct'][90]:,.0f} depending on how markets behave.")
+
+                    # ---- what you'd actually keep, after capital-gains tax
+                    _show_tax = st.toggle("Show post-tax · what you'd actually keep", key="exp_tax",
+                                          help="Applies today's Indian capital-gains rules to each simulated "
+                                               "outcome, as if you redeemed everything at the end.")
+                    if _show_tax:
+                        _ac_default = TAX.asset_class_for_sleeve(fund_sleeve)
+                        _tc = st.columns(2)
+                        _ac_label = _tc[0].selectbox(
+                            "Tax treatment", ["Equity fund", "Debt fund (slab rate)", "Other (gold/international/hybrid)"],
+                            index={"equity": 0, "debt": 1, "other": 2}[_ac_default], key="exp_tax_ac",
+                            help="Auto-picked from the fund's category; override if you know better.")
+                        _slab = _tc[1].selectbox("Your income-tax slab", [0.10, 0.20, 0.30],
+                                                 index=2, format_func=lambda v: f"{v:.0%}", key="exp_tax_slab")
+                        _ac = {"Equity fund": "equity", "Debt fund (slab rate)": "debt",
+                               "Other (gold/international/hybrid)": "other"}[_ac_label]
+                        _post = TAX.apply_to_sim(sim, _ac, _slab)
+                        st.markdown(tiles_html([
+                            ("Post-tax · unlucky 10th", f"₹{_post['terminal_pct'][10]:,.0f}", RED),
+                            ("Post-tax · typical", f"₹{_post['terminal_pct'][50]:,.0f}", AMBER),
+                            ("Post-tax · lucky 90th", f"₹{_post['terminal_pct'][90]:,.0f}", GREEN),
+                        ], cols=3), unsafe_allow_html=True)
+                        _line = (f"Tax trims the typical outcome by about {_post['effective_tax_median']:.1%}.")
+                        if "prob_target" in _post and target > 0:
+                            _line += (f" After tax, the chance of reaching ₹{target:,.0f} is "
+                                      f"**{_post['prob_target']:.0%}** (pre-tax: {sim['prob_target']:.0%}).")
+                        st.markdown(_line)
+                        st.caption("Assumes full redemption at the horizon with all units long-term (a SIP's "
+                                   "final months would really be short-term, so the true tax is slightly "
+                                   "higher). Excludes surcharge and cess; the ₹1.25L equity exemption is "
+                                   "applied once. Rules change; educational, not tax advice.")
                     if target > 0:
                         prob = sim["prob_target"]
                         pcol = GREEN if prob >= 0.6 else AMBER if prob >= 0.35 else RED
@@ -1053,6 +1085,9 @@ with tab_research:
                 st.error("Could not build a report: NAV data is missing for this plan.")
             else:
                 render_report(rep)
+                st.download_button("⬇️  Download this memo (HTML · print to PDF from your browser)",
+                                   data=RR.render_html(rep), file_name="mfrip_memo.html",
+                                   mime="text/html", key=f"dl_{abs(hash(rep.title)) % 10**8}")
 
     else:  # A portfolio
         rc = st.columns([1, 1, 2])
@@ -1086,6 +1121,9 @@ with tab_research:
                 st.markdown(coverage_report([c for c, _ in holdings]))
             else:
                 render_report(rep)
+                st.download_button("⬇️  Download this memo (HTML · print to PDF from your browser)",
+                                   data=RR.render_html(rep), file_name="mfrip_memo.html",
+                                   mime="text/html", key=f"dl_{abs(hash(rep.title)) % 10**8}")
 
                 # ---- save this portfolio
                 st.divider()
@@ -1533,6 +1571,37 @@ with tab_screener:
                     _l.dataframe(SCR.style_screener(_top[_cols_show]), hide_index=True, width='stretch')
                     _r.markdown("**Laggards**")
                     _r.dataframe(SCR.style_screener(_bottom[_cols_show]), hide_index=True, width='stretch')
+
+        st.markdown("---")
+        st.subheader("Shortlist & compare · your final contenders")
+        learn("Narrowing down is the whole game. Pick up to four funds from the table above and see them "
+              "side by side: same window, same yardsticks, growth of the same rupee.")
+        _sl_picks = st.multiselect("Pick up to 4 funds", list(_view["Fund"]),
+                                   max_selections=4, key="scr_shortlist",
+                                   placeholder="Choose from the screened funds above...")
+        if len(_sl_picks) >= 2:
+            _sl_rows = _scr[_scr["Fund"].isin(_sl_picks)]
+            st.dataframe(SCR.style_screener(_sl_rows.drop(columns=["_sleeve", "_stale"])),
+                         hide_index=True, width='stretch')
+            _name_to_code = {n: c for c, n in fund_list}
+            _sl_navs = {}
+            for _nm in _sl_picks:
+                _c = _name_to_code.get(_nm)
+                if _c:
+                    _nv = D.load_nav(conn, _c)
+                    if _nv is not None and not _nv.empty:
+                        _sl_navs[_nm[:26]] = _nv
+            if len(_sl_navs) >= 2:
+                _common_start = max(s.dropna().index[0] for s in _sl_navs.values())
+                _rebased = {k: (s.loc[_common_start:] / s.loc[_common_start:].iloc[0]) * 100_000
+                            for k, s in _sl_navs.items()}
+                st.markdown(f"**Growth of ₹1,00,000** · common window from {_common_start.date()}")
+                st.plotly_chart(C.growth_chart(_rebased), width='stretch',
+                                config={"displayModeBar": False})
+            st.caption("Shortlist lives for this browser session only; it resets on refresh. "
+                       "For a keeper, save it as a portfolio in the Portfolio Lab.")
+        elif _sl_picks:
+            st.caption("Pick at least two to compare.")
 
         st.caption("Fund size (AUM), expense ratio and third-party star ratings are not in the free data source, "
                    "so MFRIP shows its own computed, percentile-based score instead of pretending to have them. "
