@@ -2,7 +2,7 @@
 
 **An explainable suitability and research tool for Indian mutual funds.**
 
-### 🔗 [Use it live, right now: mfripmain.streamlit.app](https://mfripmain.streamlit.app)
+### 🔗 [Use it live, right now: mfripmain.streamlit.app](https://mfripfixed.streamlit.app/)
 
 No installation, no signup. Works on any phone, tablet, or computer with a browser.
 
